@@ -334,7 +334,7 @@ public:
     if (front_radius_>0)
     {
       markers.push_back(visualization_msgs::msg::Marker());
-      visualization_msgs::msg::Marker& marker1 = markers.front();
+      visualization_msgs::msg::Marker& marker1 = markers.back();
       marker1.type = visualization_msgs::msg::Marker::CYLINDER;
       current_pose.toPoseMsg(marker1.pose);
       marker1.pose.position.x += front_offset_*dir.x();
@@ -476,14 +476,16 @@ public:
   virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const
   {   
     markers.push_back(visualization_msgs::msg::Marker());
-    visualization_msgs::msg::Marker& marker = markers.front();
+    visualization_msgs::msg::Marker& marker = markers.back();
     marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
     current_pose.toPoseMsg(marker.pose); // all points are transformed into the robot frame!
-    
+    RCLCPP_INFO(rclcpp::get_logger("visualizer"), "Start: %f End: %f", line_start_.x(), line_end_.x());
+
     // line
     geometry_msgs::msg::Point line_start_world;
     line_start_world.x = line_start_.x();
     line_start_world.y = line_start_.y();
+
     line_start_world.z = 0;
     marker.points.push_back(line_start_world);
     
@@ -603,7 +605,7 @@ public:
       return;
 
     markers.push_back(visualization_msgs::msg::Marker());
-    visualization_msgs::msg::Marker& marker = markers.front();
+    visualization_msgs::msg::Marker& marker = markers.back();
     marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
     current_pose.toPoseMsg(marker.pose); // all points are transformed into the robot frame!
     
