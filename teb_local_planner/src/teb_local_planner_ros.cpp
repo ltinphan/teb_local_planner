@@ -83,6 +83,12 @@ TebLocalPlannerROS::~TebLocalPlannerROS()
 //  cfg_->reconfigure(config);
 //}
 
+
+void TebLocalPlannerROS::updateParameters()
+    {
+        RCLCPP_INFO(nh_->get_logger(), "parameters changed");
+    }
+
 void TebLocalPlannerROS::initialize()
 {
   // check if the plugin is already initialized
@@ -120,7 +126,7 @@ void TebLocalPlannerROS::initialize()
     
     costmap_model_ = std::make_shared<dwb_critics::ObstacleFootprintCritic>();
     std::string costmap_model_name("costmap_model");
-    costmap_model_->initialize(nh_, costmap_model_name, name_, costmap_ros_);
+    costmap_model_->initialize(nh_, costmap_model_name, costmap_ros_);
 
     global_frame_ = costmap_ros_->getGlobalFrameID();
     cfg_->map_frame = global_frame_; // TODO
@@ -129,7 +135,7 @@ void TebLocalPlannerROS::initialize()
     //Initialize a costmap to polygon converter
     if (!cfg_->obstacles.costmap_converter_plugin.empty())
     {
-      try
+      /*try
       {
         costmap_converter_ = costmap_converter_loader_.createSharedInstance(cfg_->obstacles.costmap_converter_plugin);
         std::string converter_name = costmap_converter_loader_.getName(cfg_->obstacles.costmap_converter_plugin);
@@ -149,7 +155,7 @@ void TebLocalPlannerROS::initialize()
         RCLCPP_INFO(nh_->get_logger(),
                     "The specified costmap converter plugin cannot be loaded. All occupied costmap cells are treaten as point obstacles. Error message: %s", ex.what());
         costmap_converter_.reset();
-      }
+      }*/
     }
     else {
       RCLCPP_INFO(nh_->get_logger(), "No costmap conversion plugin specified. All occupied costmap cells are treaten as point obstacles.");
@@ -226,6 +232,9 @@ void TebLocalPlannerROS::setPlan(const nav_msgs::msg::Path & orig_global_plan)
     RCLCPP_ERROR(nh_->get_logger(), "teb_local_planner has not been initialized, please call initialize() before using this planner");
     return;
   }
+   // reset config
+   cfg_->loadRosParamFromNodeHandle(nh_, name_);
+
 
   // store the global plan
   global_plan_.clear();
@@ -355,10 +364,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   obstacles_.clear();
   
   // Update obstacle container with costmap information or polygons provided by a costmap_converter plugin
-  if (costmap_converter_)
-    updateObstacleContainerWithCostmapConverter();
-  else
-    updateObstacleContainerWithCostmap();
+  updateObstacleContainerWithCostmap();
   
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
@@ -390,23 +396,24 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     footprint_spec_ = costmap_ros_->getRobotFootprint();
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
-
-  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-  if (!feasible)
-  {
-    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-   
-    // now we reset everything to start again with the initialization of new trajectories.
-    planner_->clearPlanner();
-
-    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-    time_last_infeasible_plan_ = nh_->now();
-    last_cmd_ = cmd_vel.twist;
-    
-    throw nav2_core::PlannerException(
-      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-    );
-  }
+  // Always true since we do not use costmap. isTrajectoryFeasible only uses costmap to check feasibility.
+  // Therefore we do not need to check whether trajectory feasible or not.
+  bool feasible = true; //planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
+  //  if (!feasible)
+  //  {
+  //    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+  //
+  //    // now we reset everything to start again with the initialization of new trajectories.
+  //    planner_->clearPlanner();
+  //
+  //    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+  //    time_last_infeasible_plan_ = nh_->now();
+  //    last_cmd_ = cmd_vel.twist;
+  //
+  //    throw nav2_core::PlannerException(
+  //      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+  //    );
+  //  }
 
   // Get the velocity command for this sampling interval
   if (!planner_->getVelocityCommand(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->trajectory.control_look_ahead_poses))
@@ -420,7 +427,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
       std::string("TebLocalPlannerROS: velocity command invalid. Resetting planner...")
     );
   }
-  
+
   // Saturate velocity, if the optimization results violates the constraints (could be possible due to soft constraints).
   saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->robot.max_vel_x, cfg_->robot.max_vel_y,
                    cfg_->robot.max_vel_theta, cfg_->robot.max_vel_x_backwards);
@@ -510,9 +517,10 @@ void TebLocalPlannerROS::updateObstacleContainerWithCostmap()
 
 void TebLocalPlannerROS::updateObstacleContainerWithCostmapConverter()
 {
-  if (!costmap_converter_)
-    return;
-    
+  //if (!costmap_converter_)
+  //  return;
+  return;  // no costmap
+    /*
   //Get obstacles from costmap converter
   costmap_converter::ObstacleArrayConstPtr obstacles = costmap_converter_->getObstacles();
   if (!obstacles)
@@ -550,7 +558,7 @@ void TebLocalPlannerROS::updateObstacleContainerWithCostmapConverter()
     // Set velocity, if obstacle is moving
     if(!obstacles_.empty())
       obstacles_.back()->setCentroidVelocity(obstacles->obstacles[i].velocities, obstacles->obstacles[i].orientation);
-  }
+  }*/
 }
 
 
@@ -671,8 +679,8 @@ bool TebLocalPlannerROS::pruneGlobalPlan(const geometry_msgs::msg::PoseStamped& 
     // transform robot pose into the plan frame (we do not wait here, since pruning not crucial, if missed a few times)
     //geometry_msgs::msg::TransformStamped global_to_plan_transform = tf_->lookupTransform(global_plan.front().header.frame_id, global_pose.header.frame_id, tf2::timeFromSec(0));
     geometry_msgs::msg::PoseStamped robot = tf_->transform(
-                global_plan.front(),
-                global_pose.header.frame_id);
+            global_pose,
+            global_plan.front().header.frame_id);
 
     //robot.setData( global_to_plan_transform * global_pose );
     
@@ -728,11 +736,13 @@ bool TebLocalPlannerROS::transformGlobalPlan(const std::vector<geometry_msgs::ms
     }
 
     // get plan_to_global_transform from plan frame to global_frame
+    // accept latest transformation
     geometry_msgs::msg::TransformStamped plan_to_global_transform = tf_->lookupTransform(
-                global_frame, tf2_ros::fromMsg(plan_pose.header.stamp),
-                plan_pose.header.frame_id, tf2::timeFromSec(0),
-                plan_pose.header.frame_id, tf2::durationFromSec(0.5));
-
+                global_frame,
+                plan_pose.header.frame_id, tf2::timeFromSec(0),tf2::durationFromSec(0.5));
+      //RCLCPP_INFO(nh_->get_logger(), "Global frame Id: %s\n", global_frame.c_str() );
+      //RCLCPP_INFO(nh_->get_logger(), "Plan pose Id: %s\n", plan_pose.header.frame_id.c_str());
+      //RCLCPP_INFO(nh_->get_logger(), "Plan pose Id: %s\n", plan_pose.header.frame_id.c_str());
 //    tf_->waitForTransform(global_frame, ros::Time::now(),
 //    plan_pose.header.frame_id, plan_pose.header.stamp,
 //    plan_pose.header.frame_id, ros::Duration(0.5));
@@ -773,9 +783,13 @@ bool TebLocalPlannerROS::transformGlobalPlan(const std::vector<geometry_msgs::ms
     geometry_msgs::msg::PoseStamped newer_pose;
     
     double plan_length = 0; // check cumulative Euclidean distance along the plan
-    
-    //now we'll transform until points are outside of our distance threshold
-    while(i < (int)global_plan.size() && sq_dist <= sq_dist_threshold && (max_plan_length<=0 || plan_length <= max_plan_length))
+      //RCLCPP_INFO(nh_->get_logger(), "Sq_dist: %f  | Sq_d_thresh: %f", sq_dist, sq_dist_threshold);
+      //RCLCPP_INFO(nh_->get_logger(), "Global plan size: %d | i: %d\n", (int)global_plan.size(), i);
+      //(nh_->get_logger(), "Max Plan length: %f | Plan Length: %f", i, plan_length );
+
+      //now we'll transform until points are outside of our distance threshold
+      while(i < (int)global_plan.size() && sq_dist <= sq_dist_threshold && (max_plan_length<=0 || plan_length <= max_plan_length))
+     // while(i < (int)global_plan.size() && (max_plan_length<=0 || plan_length <= max_plan_length))
     {
       //const geometry_msgs::msg::PoseStamped& pose = global_plan[i];
       //tf::poseStampedMsgToTF(pose, tf_pose);
@@ -1214,7 +1228,7 @@ void TebLocalPlannerROS::deactivate() {
 }
 void TebLocalPlannerROS::cleanup() {
   visualization_->on_cleanup();
-  costmap_converter_->stopWorker();
+  //costmap_converter_->stopWorker();
   
   return;
 }
