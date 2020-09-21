@@ -67,7 +67,6 @@ namespace teb_local_planner
 
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
-                                           costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
                                            custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
@@ -126,7 +125,7 @@ void TebLocalPlannerROS::initialize()
     
     costmap_model_ = std::make_shared<dwb_critics::ObstacleFootprintCritic>();
     std::string costmap_model_name("costmap_model");
-    costmap_model_->initialize(nh_, costmap_model_name, costmap_ros_);
+    costmap_model_->initialize(nh_, costmap_model_name, name_, costmap_ros_);
 
     global_frame_ = costmap_ros_->getGlobalFrameID();
     cfg_->map_frame = global_frame_; // TODO
