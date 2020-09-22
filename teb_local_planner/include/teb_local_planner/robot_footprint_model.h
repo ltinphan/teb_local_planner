@@ -479,7 +479,6 @@ public:
     visualization_msgs::msg::Marker& marker = markers.back();
     marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
     current_pose.toPoseMsg(marker.pose); // all points are transformed into the robot frame!
-    RCLCPP_INFO(rclcpp::get_logger("visualizer"), "Start: %f End: %f", line_start_.x(), line_end_.x());
 
     // line
     geometry_msgs::msg::Point line_start_world;
