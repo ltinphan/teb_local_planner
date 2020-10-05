@@ -378,6 +378,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
       return cmd_vel;
     }
   }
+  else{
+    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+    last_cmd_ = cmd_vel.twist;
+    return cmd_vel;
+  }
     
   
     
