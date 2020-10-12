@@ -367,6 +367,23 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
+
+  if (!custom_obstacle_msg_.obstacles.empty()){
+    float seconds_diff = nh_->now().seconds() - custom_obstacle_msg_.obstacles.at(0).header.stamp.sec;
+    // TODO: 5 seconds?
+    if (seconds_diff > 5){
+      RCLCPP_INFO(nh_->get_logger(), "Diff %f", seconds_diff);
+      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+      last_cmd_ = cmd_vel.twist;
+      return cmd_vel;
+    }
+  }
+  else{
+    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+    last_cmd_ = cmd_vel.twist;
+    return cmd_vel;
+  }
+    
   
     
   // Do not allow config changes during the following optimization step
