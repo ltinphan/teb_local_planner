@@ -199,6 +199,7 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   nh->get_parameter_or(name + "." + "wheelbase", robot.wheelbase, robot.wheelbase);
   nh->get_parameter_or(name + "." + "cmd_angle_instead_rotvel", robot.cmd_angle_instead_rotvel, robot.cmd_angle_instead_rotvel);
   nh->get_parameter_or(name + "." + "is_footprint_dynamic", robot.is_footprint_dynamic, robot.is_footprint_dynamic);
+  nh->get_parameter_or(name + "." + "use_proportional_saturation", robot.use_proportional_saturation, robot.use_proportional_saturation);
   
   // GoalTolerance
   nh->get_parameter_or(name + "." + "xy_goal_tolerance", goal_tolerance.xy_goal_tolerance, goal_tolerance.xy_goal_tolerance);
@@ -316,6 +317,7 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
 //  robot.min_turning_radius = cfg.min_turning_radius;
 //  robot.wheelbase = cfg.wheelbase;
 //  robot.cmd_angle_instead_rotvel = cfg.cmd_angle_instead_rotvel;
+//  robot.use_proportional_saturation = cfg.use_proportional_saturation;
   
 //  // GoalTolerance
 //  goal_tolerance.xy_goal_tolerance = cfg.xy_goal_tolerance;
