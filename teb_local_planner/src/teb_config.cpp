@@ -167,7 +167,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "oscillation_filter_duration", rclcpp::ParameterValue(recovery.oscillation_filter_duration));
   declare_parameter_if_not_declared(nh, name + "." + "divergence_detection_enable", rclcpp::ParameterValue(recovery.divergence_detection_enable));
   declare_parameter_if_not_declared(nh, name + "." + "divergence_detection_max_chi_squared", rclcpp::ParameterValue(recovery.divergence_detection_max_chi_squared));
-  declare_parameter_if_not_declared(nh, "." + "use_sin_cos_approximation", rclcpp::ParameterValue(performance.use_sin_cos_approximation));
+  declare_parameter_if_not_declared(nh, name + "." + "use_sin_cos_approximation", rclcpp::ParameterValue(performance.use_sin_cos_approximation));
 }
 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
