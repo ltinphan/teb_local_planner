@@ -91,6 +91,7 @@ void TebOptimalPlanner::initialize(nav2_util::LifecycleNode::SharedPtr node, con
   cfg_ = &cfg;
   obstacles_ = obstacles;
   robot_model_ = robot_model;
+  robot_model_->setTEBConfig(cfg_);
   via_points_ = via_points;
   cost_ = HUGE_VAL;
   prefer_rotdir_ = RotType::none;

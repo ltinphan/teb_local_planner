@@ -45,6 +45,8 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 #include <nav_2d_utils/parameters.hpp>
+#include <teb_local_planner/misc.h>
+
 
 // Definitions
 #define USE_ANALYTIC_JACOBI // if available for a specific edge, use analytic jacobi
@@ -222,6 +224,11 @@ public:
     int divergence_detection_max_chi_squared; //!< Maximum acceptable Mahalanobis distance above which it is assumed that the optimization diverged.
   } recovery; //!< Parameters related to recovery and backup strategies
 
+  //! Performance enhancement related parameters
+  struct Performance
+  {
+    bool use_sin_cos_approximation; //!< Use sin and cos approximations to improve performance. The maximum absolute error for these approximations is 1e-3.
+  } performance;
 
   /**
   * @brief Construct the TebConfig using default values.
@@ -378,6 +385,11 @@ public:
     recovery.oscillation_filter_duration = 10;
     recovery.divergence_detection_enable = false;
     recovery.divergence_detection_max_chi_squared = 10;
+    // Recovery
+
+    performance.use_sin_cos_approximation = false;
+
+
   }
   
   void declareParameters(const nav2_util::LifecycleNode::SharedPtr, const std::string name);
@@ -408,7 +420,28 @@ public:
    * @param nh const reference to the local rclcpp::Node::SharedPtr
    */
   void checkDeprecated(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name) const;
-  
+
+  template <typename T>
+  inline void sincos(T angle, T& sin, T& cos) const
+  {
+    if (performance.use_sin_cos_approximation)
+        teb_local_planner::sincos_approx(angle, sin, cos);
+    else
+    {
+        sin = std::sin(angle);
+        cos = std::cos(angle);
+    }
+  }
+
+  template <typename T>
+  inline void sin(T angle, T& sin) const
+  {
+    if (performance.use_sin_cos_approximation)
+        teb_local_planner::sin_approx(angle, sin);
+    else
+        sin = std::sin(angle);
+  }
+
   /**
    * @brief Return the internal config mutex
    */

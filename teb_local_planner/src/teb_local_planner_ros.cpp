@@ -99,7 +99,8 @@ void TebLocalPlannerROS::initialize(nav2_util::LifecycleNode::SharedPtr node)
         
     // create robot footprint/contour model for optimization
     RobotFootprintModelPtr robot_model = getRobotFootprintFromParamServer(node);
-    
+    robot_model->setTEBConfig(*cfg_);
+
     // create the planner instance
     if (cfg_->hcp.enable_homotopy_class_planning)
     {
