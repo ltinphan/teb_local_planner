@@ -107,6 +107,7 @@ void TebLocalPlannerROS::initialize()
         
     // create robot footprint/contour model for optimization
     RobotFootprintModelPtr robot_model = getRobotFootprintFromParamServer();
+    robot_model->setTEBConfig(*cfg_);
     
     // create the planner instance
     if (cfg_->hcp.enable_homotopy_class_planning)
@@ -954,7 +955,7 @@ void TebLocalPlannerROS::saturateVelocity(double& vx, double& vy, double& omega,
   }
   else if (vx < -max_vel_x_backwards) {
       ratio_x = -max_vel_x_backwards / vx;
-      if (cfg_.robot.use_proportional_saturation) {
+      if (cfg_->robot.use_proportional_saturation) {
           double ratio = std::min(std::min(ratio_x, ratio_y), ratio_omega);
           vx *= ratio;
           vy *= ratio;

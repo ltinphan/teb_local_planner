@@ -77,6 +77,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   nh->declare_parameter(name + "." + "wheelbase", rclcpp::ParameterValue(robot.wheelbase));
   nh->declare_parameter(name + "." + "cmd_angle_instead_rotvel", rclcpp::ParameterValue(robot.cmd_angle_instead_rotvel));
   nh->declare_parameter(name + "." + "is_footprint_dynamic", rclcpp::ParameterValue(robot.is_footprint_dynamic));
+  nh->declare_parameter(name + "." + "use_proportional_saturation",  rclcpp::ParameterValue(robot.use_proportional_saturation));
   
   // GoalTolerance
   nh->declare_parameter(name + "." + "xy_goal_tolerance", rclcpp::ParameterValue(goal_tolerance.xy_goal_tolerance));
@@ -159,6 +160,9 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   nh->declare_parameter(name + "." + "oscillation_omega_eps", rclcpp::ParameterValue(recovery.oscillation_omega_eps));
   nh->declare_parameter(name + "." + "oscillation_recovery_min_duration", rclcpp::ParameterValue(recovery.oscillation_recovery_min_duration));
   nh->declare_parameter(name + "." + "oscillation_filter_duration", rclcpp::ParameterValue(recovery.oscillation_filter_duration));
+
+    // Performance
+    nh->declare_parameter(name + "." + "use_sin_cos_approximation", rclcpp::ParameterValue(performance.use_sin_cos_approximation));
 }
 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
@@ -283,6 +287,9 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   nh->get_parameter_or(name + "." + "oscillation_recovery_min_duration", recovery.oscillation_recovery_min_duration, recovery.oscillation_recovery_min_duration);
   nh->get_parameter_or(name + "." + "oscillation_filter_duration", recovery.oscillation_filter_duration, recovery.oscillation_filter_duration);
 
+  // Performance
+  nh->get_parameter_or(name + "." + "use_sin_cos_approximation", performance.use_sin_cos_approximation, performance.use_sin_cos_approximation);
+
   checkParameters(nh);
   checkDeprecated(nh, name);
 }
@@ -384,6 +391,10 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   
 //  recovery.shrink_horizon_backup = cfg.shrink_horizon_backup;
 //  recovery.oscillation_recovery = cfg.oscillation_recovery;
+
+// Performance
+
+//performance.use_sin_cos_approximation = cfg.use_sin_cos_approximation;
   
 //  checkParameters();
 //}

@@ -95,10 +95,14 @@ public:
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
 
     // non holonomic constraint
-    _error[0] = fabs( ( cos(conf1->theta())+cos(conf2->theta()) ) * deltaS[1] - ( sin(conf1->theta())+sin(conf2->theta()) ) * deltaS[0] );
+
+    double s1, c1, s2, c2;
+    cfg_->sincos(conf1->theta(), s1, c1);
+    cfg_->sincos(conf2->theta(), s2, c2);
+    _error[0] = fabs( ( c1+c2 ) * deltaS[1] - ( s1+s2 ) * deltaS[0] );
 
     // positive-drive-direction constraint
-    Eigen::Vector2d angle_vec ( cos(conf1->theta()), sin(conf1->theta()) );	   
+    Eigen::Vector2d angle_vec ( cos(conf1->theta()), s1 );
     _error[1] = penaltyBoundFromBelow(deltaS.dot(angle_vec), 0,0);
     // epsilon=0, otherwise it pushes the first bandpoints away from start
 

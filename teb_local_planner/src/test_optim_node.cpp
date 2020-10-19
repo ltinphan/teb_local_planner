@@ -145,6 +145,7 @@ int main( int argc, char** argv )
   
   // Setup robot shape model
   RobotFootprintModelPtr robot_model = TebLocalPlannerROS::getRobotFootprintFromParamServer(n);
+  robot_model->setTEBConfig(config);
   
   // Setup planner (homotopy class planning or just the local teb planner)
   if (config.hcp.enable_homotopy_class_planning)
