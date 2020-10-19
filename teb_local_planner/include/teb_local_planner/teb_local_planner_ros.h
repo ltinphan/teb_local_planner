@@ -106,7 +106,7 @@ public:
    * @param costmap_ros Cost map representing occupied and free space
    */
   void configure(
-    const rclcpp_lifecycle::LifecycleNode::WeakPtr & node,
+    const rclcpp_lifecycle::LifecycleNode::SharedPtr & node,
     std::string name,
     const std::shared_ptr<tf2_ros::Buffer> & tf,
     const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> & costmap_ros) override;
@@ -119,7 +119,7 @@ public:
   /**
     * @brief Initializes the teb plugin
     */
-  void initialize(nav2_util::LifecycleNode::SharedPtr node);
+  void initialize();
 
   /**
     * @brief Set the plan that the teb local planner is following
@@ -137,6 +137,19 @@ public:
   geometry_msgs::msg::TwistStamped computeVelocityCommands(
     const geometry_msgs::msg::PoseStamped &pose,
     const geometry_msgs::msg::Twist &velocity);
+
+  bool isGoalReached(
+    const geometry_msgs::msg::PoseStamped & pose,
+    const geometry_msgs::msg::Twist & velocity) ;
+
+  /**
+    * @brief  Check if the goal pose has been achieved
+    * 
+    * The actual check is performed in computeVelocityCommands(). 
+    * Only the status flag is checked here.
+    * @return True if achieved, false otherwise
+    */
+  bool isGoalReached();
   
   
     
@@ -157,7 +170,7 @@ public:
    * @param nh const reference to the local rclcpp::Node::SharedPtr
    * @return Robot footprint model used for optimization
    */
-  RobotFootprintModelPtr getRobotFootprintFromParamServer(nav2_util::LifecycleNode::SharedPtr node);
+  RobotFootprintModelPtr getRobotFootprintFromParamServer();
   
   /** 
    * @brief Set the footprint from the given XmlRpcValue.
@@ -354,9 +367,7 @@ protected:
 private:
   // Definition of member variables
 
-  nav2_util::LifecycleNode::WeakPtr nh_;
-  rclcpp::Logger logger_;
-  rclcpp::Clock::SharedPtr clock_;
+  nav2_util::LifecycleNode::SharedPtr nh_;
   rclcpp::Node::SharedPtr intra_proc_node_;
   // external objects (store weak pointers)
   CostmapROSPtr costmap_ros_; //!< Pointer to the costmap ros wrapper, received from the navigation stack
@@ -389,6 +400,7 @@ private:
   PoseSE2 robot_pose_; //!< Store current robot pose
   PoseSE2 robot_goal_; //!< Store current robot goal
   geometry_msgs::msg::Twist robot_vel_; //!< Store current robot translational and angular velocity (vx, vy, omega)
+  bool goal_reached_; //!< store whether the goal is reached or not
   rclcpp::Time time_last_infeasible_plan_; //!< Store at which time stamp the last infeasible plan was detected
   int no_infeasible_plans_; //!< Store how many times in a row the planner failed to find a feasible plan.
   rclcpp::Time time_last_oscillation_; //!< Store at which time stamp the last oscillation was detected
