@@ -153,7 +153,7 @@ public:
     * @param robot_model Shared pointer to the robot shape model used for optimization (optional)
     */
   void updateRobotModel(RobotFootprintModelPtr robot_model );
-  
+
   /** @name Plan a trajectory  */
   //@{
   
@@ -413,7 +413,7 @@ public:
    * @brief Returns true if the planner has diverged.
    */
   bool hasDiverged() const override;
-	
+
   /**
    * @brief Compute the cost vector of a given optimization problen (hyper-graph must exist).
    * 
@@ -695,7 +695,7 @@ protected:
    * @see optimizeGraph
    */
   void AddEdgesVelocityObstacleRatio();
-  
+
   //@}
   
   
@@ -711,7 +711,7 @@ protected:
   ObstContainer* obstacles_; //!< Store obstacles that are relevant for planning
   const ViaPointContainer* via_points_; //!< Store via points for planning
   std::vector<ObstContainer> obstacles_per_vertex_; //!< Store the obstacles associated with the n-1 initial vertices
-  
+
   double cost_; //!< Store cost value of the current hyper-graph
   RotType prefer_rotdir_; //!< Store whether to prefer a specific initial rotation in optimization (might be activated in case the robot oscillates)
   

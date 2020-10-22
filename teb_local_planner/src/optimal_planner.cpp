@@ -349,7 +349,7 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
   }
 
   optimizer_->setComputeBatchStatistics(cfg_->recovery.divergence_detection_enable);
-  
+
   // add TEB vertices
   AddTEBVertices();
   
@@ -381,7 +381,7 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
 
   if (cfg_->optim.weight_velocity_obstacle_ratio > 0)
     AddEdgesVelocityObstacleRatio();
-    
+
   return true;  
 }
 
@@ -497,7 +497,7 @@ void TebOptimalPlanner::AddEdgesObstacles(double weight_multiplier)
       optimizer_->addEdge(dist_bandpt_obst);
     };
   };
-    
+
   // iterate all teb points, skipping the last and, if the EdgeVelocityObstacleRatio edges should not be created, the first one too
   const int first_vertex = cfg_->optim.weight_velocity_obstacle_ratio == 0 ? 1 : 0;
   for (int i = first_vertex; i < teb_.sizePoses() - 1; ++i)
@@ -547,7 +547,7 @@ void TebOptimalPlanner::AddEdgesObstacles(double weight_multiplier)
               }
           }
       }   
-      
+
       if (left_obstacle)
         iter_obstacle->push_back(left_obstacle);
       if (right_obstacle)
