@@ -43,6 +43,8 @@
 #include "teb_local_planner/pose_se2.h"
 #include "teb_local_planner/obstacles.h"
 #include <visualization_msgs/msg/marker.hpp>
+#include <teb_local_planner/misc.h>
+#include <teb_local_planner/teb_config.h>
 
 namespace teb_local_planner
 {
@@ -62,7 +64,8 @@ public:
   /**
     * @brief Default constructor of the abstract obstacle class
     */
-  BaseRobotFootprintModel()
+  BaseRobotFootprintModel():
+          cfg_(nullptr)
   {
   }
   
@@ -109,7 +112,26 @@ public:
    */
   virtual double getInscribedRadius() = 0;
 
-	
+    /**
+     * @brief Assign the TebConfig class for parameters.
+     * @param cfg TebConfig class
+     */
+    inline void setTEBConfig(const TebConfig& config)
+    {
+        cfg_ = &config;
+    }
+
+    /**
+     * @brief Assign the TebConfig class for parameters.
+     * @param cfg TebConfig class
+     */
+    inline void setTEBConfig(const TebConfig * const config)
+    {
+        cfg_ = config;
+    }
+
+protected:
+    const TebConfig* cfg_; //!< Store TebConfig class for parameters
 
 public:	
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -517,8 +539,8 @@ private:
     */
   void transformToWorld(const PoseSE2& current_pose, Eigen::Vector2d& line_start_world, Eigen::Vector2d& line_end_world) const
   {
-    double cos_th = std::cos(current_pose.theta());
-    double sin_th = std::sin(current_pose.theta());
+    double sin_th, cos_th;
+    cfg_->sincos(current_pose.theta(), sin_th, cos_th);
     line_start_world.x() = current_pose.x() + cos_th * line_start_.x() - sin_th * line_start_.y();
     line_start_world.y() = current_pose.y() + sin_th * line_start_.x() + cos_th * line_start_.y();
     line_end_world.x() = current_pose.x() + cos_th * line_end_.x() - sin_th * line_end_.y();
