@@ -40,11 +40,11 @@
 #ifndef ROBOT_FOOTPRINT_MODEL_H
 #define ROBOT_FOOTPRINT_MODEL_H
 
-#include "teb_local_planner/pose_se2.h"
-#include "teb_local_planner/obstacles.h"
-#include <visualization_msgs/msg/marker.hpp>
+#include <teb_local_planner/pose_se2.h>
+#include <teb_local_planner/obstacles.h>
 #include <teb_local_planner/misc.h>
 #include <teb_local_planner/teb_config.h>
+#include <visualization_msgs/Marker.h>
 
 namespace teb_local_planner
 {
@@ -64,8 +64,8 @@ public:
   /**
     * @brief Default constructor of the abstract obstacle class
     */
-  BaseRobotFootprintModel():
-          cfg_(nullptr)
+  BaseRobotFootprintModel() :
+    cfg_(nullptr)
   {
   }
   
@@ -103,7 +103,7 @@ public:
     * @param[out] markers container of marker messages describing the robot shape
     * @param color Color of the footprint
     */
-  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const {}
+  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::Marker>& markers, const std_msgs::ColorRGBA& color) const {}
   
   
   /**
@@ -112,26 +112,26 @@ public:
    */
   virtual double getInscribedRadius() = 0;
 
-    /**
-     * @brief Assign the TebConfig class for parameters.
-     * @param cfg TebConfig class
-     */
-    inline void setTEBConfig(const TebConfig& config)
-    {
-        cfg_ = &config;
-    }
+  /**
+   * @brief Assign the TebConfig class for parameters.
+   * @param cfg TebConfig class
+   */
+  inline void setTEBConfiguration(const TebConfig& config)
+  {
+    cfg_ = &config;
+  }
 
-    /**
-     * @brief Assign the TebConfig class for parameters.
-     * @param cfg TebConfig class
-     */
-    inline void setTEBConfig(const TebConfig * const config)
-    {
-        cfg_ = config;
-    }
-
+  /**
+   * @brief Assign the TebConfig class for parameters.
+   * @param cfg TebConfig class
+   */
+  inline void setTEBConfiguration(const TebConfig * const config)
+  {
+    cfg_ = config;
+  }
+	
 protected:
-    const TebConfig* cfg_; //!< Store TebConfig class for parameters
+  const TebConfig* cfg_; //!< Store TebConfig class for parameters
 
 public:	
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -139,9 +139,9 @@ public:
 
 
 //! Abbrev. for shared obstacle pointers
-typedef std::shared_ptr<BaseRobotFootprintModel> RobotFootprintModelPtr;
+typedef boost::shared_ptr<BaseRobotFootprintModel> RobotFootprintModelPtr;
 //! Abbrev. for shared obstacle const pointers
-typedef std::shared_ptr<const BaseRobotFootprintModel> RobotFootprintModelConstPtr;
+typedef boost::shared_ptr<const BaseRobotFootprintModel> RobotFootprintModelConstPtr;
 
 
 
@@ -256,11 +256,11 @@ public:
     * @param[out] markers container of marker messages describing the robot shape
     * @param color Color of the footprint
     */
-  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const
+  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::Marker>& markers, const std_msgs::ColorRGBA& color) const
   {
     markers.resize(1);
-    visualization_msgs::msg::Marker& marker = markers.back();
-    marker.type = visualization_msgs::msg::Marker::CYLINDER;
+    visualization_msgs::Marker& marker = markers.back();
+    marker.type = visualization_msgs::Marker::CYLINDER;
     current_pose.toPoseMsg(marker.pose);
     marker.scale.x = marker.scale.y = 2*radius_; // scale = diameter
     marker.scale.z = 0.05;
@@ -320,7 +320,10 @@ public:
     */
   virtual double calculateDistance(const PoseSE2& current_pose, const Obstacle* obstacle) const
   {
-    Eigen::Vector2d dir = current_pose.orientationUnitVec();
+    double sin_th = cfg_->sin(current_pose.theta());
+    double cos_th = cfg_->cos(current_pose.theta());
+
+    Eigen::Vector2d dir(cos_th, sin_th);
     double dist_front = obstacle->getMinimumDistance(current_pose.position() + front_offset_*dir) - front_radius_;
     double dist_rear = obstacle->getMinimumDistance(current_pose.position() - rear_offset_*dir) - rear_radius_;
     return std::min(dist_front, dist_rear);
@@ -335,7 +338,10 @@ public:
     */
   virtual double estimateSpatioTemporalDistance(const PoseSE2& current_pose, const Obstacle* obstacle, double t) const
   {
-    Eigen::Vector2d dir = current_pose.orientationUnitVec();
+    double sin_th = cfg_->sin(current_pose.theta());
+    double cos_th = cfg_->cos(current_pose.theta());
+
+    Eigen::Vector2d dir(cos_th, sin_th);
     double dist_front = obstacle->getMinimumSpatioTemporalDistance(current_pose.position() + front_offset_*dir, t) - front_radius_;
     double dist_rear = obstacle->getMinimumSpatioTemporalDistance(current_pose.position() - rear_offset_*dir, t) - rear_radius_;
     return std::min(dist_front, dist_rear);
@@ -350,14 +356,17 @@ public:
     * @param[out] markers container of marker messages describing the robot shape
     * @param color Color of the footprint
     */
-  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const
-  {    
-    Eigen::Vector2d dir = current_pose.orientationUnitVec();
+  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::Marker>& markers, const std_msgs::ColorRGBA& color) const
+  {
+    double sin_th = cfg_->sin(current_pose.theta());
+    double cos_th = cfg_->cos(current_pose.theta());
+
+    Eigen::Vector2d dir(cos_th, sin_th);
     if (front_radius_>0)
     {
-      markers.push_back(visualization_msgs::msg::Marker());
-      visualization_msgs::msg::Marker& marker1 = markers.back();
-      marker1.type = visualization_msgs::msg::Marker::CYLINDER;
+      markers.push_back(visualization_msgs::Marker());
+      visualization_msgs::Marker& marker1 = markers.back();
+      marker1.type = visualization_msgs::Marker::CYLINDER;
       current_pose.toPoseMsg(marker1.pose);
       marker1.pose.position.x += front_offset_*dir.x();
       marker1.pose.position.y += front_offset_*dir.y();
@@ -368,9 +377,9 @@ public:
     }
     if (rear_radius_>0)
     {
-      markers.push_back(visualization_msgs::msg::Marker());
-      visualization_msgs::msg::Marker& marker2 = markers.back();
-      marker2.type = visualization_msgs::msg::Marker::CYLINDER;
+      markers.push_back(visualization_msgs::Marker());
+      visualization_msgs::Marker& marker2 = markers.back();
+      marker2.type = visualization_msgs::Marker::CYLINDER;
       current_pose.toPoseMsg(marker2.pose);
       marker2.pose.position.x -= rear_offset_*dir.x();
       marker2.pose.position.y -= rear_offset_*dir.y();
@@ -415,7 +424,7 @@ public:
     * @param line_start start coordinates (only x and y) of the line (w.r.t. robot center at (0,0))
     * @param line_end end coordinates (only x and y) of the line (w.r.t. robot center at (0,0))
     */
-  LineRobotFootprint(const geometry_msgs::msg::Point& line_start, const geometry_msgs::msg::Point& line_end)
+  LineRobotFootprint(const geometry_msgs::Point& line_start, const geometry_msgs::Point& line_end)
   {
     setLine(line_start, line_end);
   }
@@ -439,7 +448,7 @@ public:
    * @brief Set vertices of the contour/footprint
    * @param vertices footprint vertices (only x and y) around the robot center (0,0) (do not repeat the first and last vertex at the end)
    */
-  void setLine(const geometry_msgs::msg::Point& line_start, const geometry_msgs::msg::Point& line_end)
+  void setLine(const geometry_msgs::Point& line_start, const geometry_msgs::Point& line_end)
   {
     line_start_.x() = line_start.x; 
     line_start_.y() = line_start.y; 
@@ -495,22 +504,21 @@ public:
     * @param[out] markers container of marker messages describing the robot shape
     * @param color Color of the footprint
     */
-  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const
+  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::Marker>& markers, const std_msgs::ColorRGBA& color) const
   {   
-    markers.push_back(visualization_msgs::msg::Marker());
-    visualization_msgs::msg::Marker& marker = markers.back();
-    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    markers.push_back(visualization_msgs::Marker());
+    visualization_msgs::Marker& marker = markers.back();
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
     current_pose.toPoseMsg(marker.pose); // all points are transformed into the robot frame!
-
+    
     // line
-    geometry_msgs::msg::Point line_start_world;
+    geometry_msgs::Point line_start_world;
     line_start_world.x = line_start_.x();
     line_start_world.y = line_start_.y();
-
     line_start_world.z = 0;
     marker.points.push_back(line_start_world);
     
-    geometry_msgs::msg::Point line_end_world;
+    geometry_msgs::Point line_end_world;
     line_end_world.x = line_end_.x();
     line_end_world.y = line_end_.y();
     line_end_world.z = 0;
@@ -539,8 +547,9 @@ private:
     */
   void transformToWorld(const PoseSE2& current_pose, Eigen::Vector2d& line_start_world, Eigen::Vector2d& line_end_world) const
   {
-    double sin_th, cos_th;
-    cfg_->sincos(current_pose.theta(), sin_th, cos_th);
+    double sin_th = cfg_->sin(current_pose.theta());
+    double cos_th = cfg_->cos(current_pose.theta());
+
     line_start_world.x() = current_pose.x() + cos_th * line_start_.x() - sin_th * line_start_.y();
     line_start_world.y() = current_pose.y() + sin_th * line_start_.x() + cos_th * line_start_.y();
     line_end_world.x() = current_pose.x() + cos_th * line_end_.x() - sin_th * line_end_.y();
@@ -620,26 +629,26 @@ public:
     * @param[out] markers container of marker messages describing the robot shape
     * @param color Color of the footprint
     */
-  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const
+  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::Marker>& markers, const std_msgs::ColorRGBA& color) const
   {
     if (vertices_.empty())
       return;
 
-    markers.push_back(visualization_msgs::msg::Marker());
-    visualization_msgs::msg::Marker& marker = markers.back();
-    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    markers.push_back(visualization_msgs::Marker());
+    visualization_msgs::Marker& marker = markers.back();
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
     current_pose.toPoseMsg(marker.pose); // all points are transformed into the robot frame!
     
     for (std::size_t i = 0; i < vertices_.size(); ++i)
     {
-      geometry_msgs::msg::Point point;
+      geometry_msgs::Point point;
       point.x = vertices_[i].x();
       point.y = vertices_[i].y();
       point.z = 0;
       marker.points.push_back(point);
     }
     // add first point again in order to close the polygon
-    geometry_msgs::msg::Point point;
+    geometry_msgs::Point point;
     point.x = vertices_.front().x();
     point.y = vertices_.front().y();
     point.z = 0;
@@ -685,8 +694,9 @@ private:
     */
   void transformToWorld(const PoseSE2& current_pose, Point2dContainer& polygon_world) const
   {
-    double cos_th = std::cos(current_pose.theta());
-    double sin_th = std::sin(current_pose.theta());
+    double sin_th = cfg_->sin(current_pose.theta());
+    double cos_th = cfg_->cos(current_pose.theta());
+
     for (std::size_t i=0; i<vertices_.size(); ++i)
     {
       polygon_world[i].x() = current_pose.x() + cos_th * vertices_[i].x() - sin_th * vertices_[i].y();

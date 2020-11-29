@@ -39,17 +39,14 @@
 #ifndef MISC_H
 #define MISC_H
 
-#include <builtin_interfaces/msg/duration.hpp>
-
 #include <Eigen/Core>
+#include <boost/utility.hpp>
+#include <boost/type_traits.hpp>
 
-#include <exception>
-#include <type_traits>
-
-#include <rclcpp/logging.hpp>
 
 namespace teb_local_planner
 {
+
 #define SMALL_NUM 0.00000001
 
 //! Symbols for left/none/right rotations      
@@ -148,163 +145,36 @@ inline const T& get_const_reference(const T* ptr) {return *ptr;}
  * @return  If \c T is a pointer, return const *T (leading to const T&), otherwise const T& with out pointer-to-ref conversion
  */
 template<typename T>
-inline const T& get_const_reference(const T& val, typename std::enable_if_t<!std::is_pointer<T>::value, T>* dummy = nullptr) {return val;}
+inline const T& get_const_reference(const T& val, typename boost::disable_if<boost::is_pointer<T> >::type* dummy = 0) {return val;}
 
-template <typename T>
-inline void sincos_approx(T angle, T &sin, T &cos)
+inline float sin_fast(float angle)
 {
-    // Least squares for sin(x) = a0 + a1 * x + a2 * x^2 in [0, pi/4]
-    const static T a0 = -0.00377382f;
-    const static T a1 = 1.0583384f;
-    const static T a2 =  -0.18924264f;
-    // Least squares for cos(x) = b0 + b1 * x + b2 * x^2 in [0, pi/4]
-    const static T b0 = 1.00132026f;
-    const static T b1 = -0.01798667f;
-    const static T b2 = -0.45687215f;
-    // Find the quadrant
-    bool quad_3_or_4 = false;
-    if (angle < 0)
-        angle = angle + 2 * static_cast<T>(M_PI);
-    if (angle > static_cast<T>(M_PI))
-    {
-        angle = angle - static_cast<T>(M_PI);
-        quad_3_or_4 = true;
-    }
-    if (angle > 3 * static_cast<T>(M_PI_4))
-    {
-        angle = static_cast<T>(M_PI) - angle;
-        T angle2 = angle * angle;
-        sin =   a0 + a1 * angle + a2 * angle2;
-        cos = -(b0 + b1 * angle + b2 * angle2);
-    }
-    else if (angle > static_cast<T>(M_PI_2))
-    {
-        angle = angle - static_cast<T>(M_PI_2);
-        T angle2 = angle * angle;
-        cos = -(a0 + a1 * angle + a2 * angle2);
-        sin =   b0 + b1 * angle + b2 * angle2;
-    }
-    else if (angle > static_cast<T>(M_PI_4))
-    {
-        angle = static_cast<T>(M_PI_2) - angle;
-        T angle2 = angle * angle;
-        cos = a0 + a1 * angle + a2 * angle2;
-        sin = b0 + b1 * angle + b2 * angle2;
-    }
-    else
-    {
-        T angle2 = angle * angle;
-        sin = a0 + a1 * angle + a2 * angle2;
-        cos = b0 + b1 * angle + b2 * angle2;
-    }
-    if (quad_3_or_4)
-    {
-        sin = -sin;
-        cos = -cos;
-    }
-};
+  // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
+  constexpr float PI = 3.14159265358f;
+  constexpr float PI2 = 2 * PI;
+  constexpr float B = 4.0f / PI;
+  constexpr float C = -4.0f / (PI * PI);
+  constexpr float P = 0.225f;
 
-template <typename T>
-inline void sin_approx(T angle, T &sin)
-{
-    // Least squares for sin(x) = a0 + a1 * x + a2 * x^2 in [0, pi/4]
-    const static T a0 = -0.00377382f;
-    const static T a1 = 1.0583384f;
-    const static T a2 =  -0.18924264f;
-    // Least squares for cos(x) = b0 + b1 * x + b2 * x^2 in [0, pi/4]
-    const static T b0 = 1.00132026f;
-    const static T b1 = -0.01798667f;
-    const static T b2 = -0.45687215f;
-    // Find the quadrant
-    bool quad_3_or_4 = false;
-    if (angle < 0)
-        angle = angle + 2 * static_cast<T>(M_PI);
-    if (angle > static_cast<T>(M_PI))
-    {
-        angle = angle - static_cast<T>(M_PI);
-        quad_3_or_4 = true;
-    }
-    if (angle > 3 * static_cast<T>(M_PI_4))
-    {
-        angle = static_cast<T>(M_PI) - angle;
-        T angle2 = angle * angle;
-        sin =   a0 + a1 * angle + a2 * angle2;
-    }
-    else if (angle > static_cast<T>(M_PI_2))
-    {
-        angle = angle - static_cast<T>(M_PI_2);
-        T angle2 = angle * angle;
-        sin =   b0 + b1 * angle + b2 * angle2;
-    }
-    else if (angle > static_cast<T>(M_PI_4))
-    {
-        angle = static_cast<T>(M_PI_2) - angle;
-        T angle2 = angle * angle;
-        sin = b0 + b1 * angle + b2 * angle2;
-    }
-    else
-    {
-        T angle2 = angle * angle;
-        sin = a0 + a1 * angle + a2 * angle2;
-    }
-    if (quad_3_or_4)
-        sin = -sin;
-};
+  angle = std::fmod(angle, PI2);
+  if (angle > PI)
+    angle -= PI2;
 
-inline builtin_interfaces::msg::Duration durationFromSec(double t_sec)
-{
-  int32_t sec;
-  uint32_t nsec;
-  sec = static_cast<int32_t>(floor(t_sec));
-  nsec = static_cast<int32_t>(std::round((t_sec - sec) * 1e9));
-  // avoid rounding errors
-  sec += (nsec / 1000000000l);
-  nsec %= 1000000000l;
-
-  builtin_interfaces::msg::Duration duration;
-  duration.sec = sec;
-  duration.nanosec = nsec;
-  return duration;
+  angle = B * angle + C * angle * (angle < 0 ? -angle : angle);
+  return P * (angle * (angle < 0 ? -angle : angle) - angle) + angle;
 }
 
-struct TebAssertionFailureException : public std::runtime_error
+inline float cos_fast(float angle)
 {
-    TebAssertionFailureException(const std::string &msg)
-        : std::runtime_error(msg)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), msg.c_str());
-    }
-};
+  // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
+  constexpr float PI = 3.14159265358f;
+  constexpr float PI2 = 2 * PI;
 
-#define TEB_ASSERT_MSG_IMPL(...) \
-    { \
-        char arg_string[1024]; \
-        std::sprintf(arg_string, __VA_ARGS__); \
-        const std::string msg(arg_string); \
-        throw TebAssertionFailureException(msg); \
-    }
+  angle = (angle > 0) ? -angle : angle;
+  angle += PI/2;
 
-template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
-void teb_assert_msg_impl(const T expression, ARGS ...args) {
-    if(expression == 0) {
-        char arg_string[1024];
-        std::sprintf(arg_string, args..., "");
-        const std::string msg(arg_string);
-        throw TebAssertionFailureException(msg);
-    }
+  return sin_fast(angle);
 }
-
-template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_pointer<T>::value>* = nullptr>
-void teb_assert_msg_impl(const T expression, ARGS ...args) {
-    if(expression == nullptr) {
-        char arg_string[1024];
-        std::sprintf(arg_string, args..., "");
-        const std::string msg(arg_string);
-        throw TebAssertionFailureException(msg);
-    }
-}
-
-#define TEB_ASSERT_MSG(expression, ...) teb_assert_msg_impl(expression, __VA_ARGS__)
 
 } // namespace teb_local_planner
 
