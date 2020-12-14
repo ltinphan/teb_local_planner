@@ -67,7 +67,6 @@ namespace teb_local_planner
 
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
-                                           costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
                                            custom_via_points_active_(false), no_infeasible_plans_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
@@ -214,9 +213,6 @@ void TebLocalPlannerROS::configure(
     const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> & costmap_ros) {
   nh_ = node;
 
-  auto node = nh_.lock();
-  logger_ = node->get_logger();
-  clock_ = node->get_clock();
 
   costmap_ros_ = costmap_ros;
   tf_ = tf;
