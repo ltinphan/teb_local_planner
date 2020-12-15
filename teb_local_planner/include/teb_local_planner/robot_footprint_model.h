@@ -356,7 +356,7 @@ public:
     * @param[out] markers container of marker messages describing the robot shape
     * @param color Color of the footprint
     */
-  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::Marker>& markers, const std_msgs::ColorRGBA& color) const
+  virtual void visualizeRobot(const PoseSE2& current_pose, std::vector<visualization_msgs::msg::Marker>& markers, const std_msgs::msg::ColorRGBA& color) const
   {
     double sin_th = cfg_->sin(current_pose.theta());
     double cos_th = cfg_->cos(current_pose.theta());

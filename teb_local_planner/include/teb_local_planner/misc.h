@@ -150,65 +150,57 @@ inline const T& get_const_reference(const T* ptr) {return *ptr;}
 template<typename T>
 inline const T& get_const_reference(const T& val, typename std::enable_if_t<!std::is_pointer<T>::value, T>* dummy = nullptr) {return val;}
 
+
 inline float sin_fast(float angle)
-{
-  // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
-  constexpr float PI = 3.14159265358f;
-  constexpr float PI2 = 2 * PI;
-  constexpr float B = 4.0f / PI;
-  constexpr float C = -4.0f / (PI * PI);
-  constexpr float P = 0.225f;
+{  // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
+    constexpr float PI = 3.14159265358f;
+    constexpr float PI2 = 2 * PI;
+    constexpr float B = 4.0f / PI;
+    constexpr float C = -4.0f / (PI * PI);
+    constexpr float P = 0.225f;
 
-  angle = std::fmod(angle, PI2);
-  if (angle > PI)
-    angle -= PI2;
+    angle = std::fmod(angle, PI2);
+    if (angle > PI)
+        angle -= PI2;
 
-  angle = B * angle + C * angle * (angle < 0 ? -angle : angle);
-  return P * (angle * (angle < 0 ? -angle : angle) - angle) + angle;
+    angle = B * angle + C * angle * (angle < 0 ? -angle : angle);
+    return P * (angle * (angle < 0 ? -angle : angle) - angle) + angle;
 }
-
 inline float cos_fast(float angle)
+{  // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
+    constexpr float PI = 3.14159265358f;
+    constexpr float PI2 = 2 * PI;
+
+    angle = (angle > 0) ? -angle : angle;
+    angle += PI/2;
+
+    return sin_fast(angle);
+}
+
+inline builtin_interfaces::msg::Duration durationFromSec(double t_sec)
 {
-  // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
-  constexpr float PI = 3.14159265358f;
-  constexpr float PI2 = 2 * PI;
+  int32_t sec;
+  uint32_t nsec;
+  sec = static_cast<int32_t>(floor(t_sec));
+  nsec = static_cast<int32_t>(std::round((t_sec - sec) * 1e9));
+  // avoid rounding errors
+  sec += (nsec / 1000000000l);
+  nsec %= 1000000000l;
 
-  angle = (angle > 0) ? -angle : angle;
-  angle += PI/2;
-
-  return sin_fast(angle);
+  builtin_interfaces::msg::Duration duration;
+  duration.sec = sec;
+  duration.nanosec = nsec;
+  return duration;
 }
-    inline builtin_interfaces::msg::Duration durationFromSec(double t_sec)
-    {
-        int32_t sec;
-        uint32_t nsec;
-        sec = static_cast<int32_t>(floor(t_sec));
-        nsec = static_cast<int32_t>(std::round((t_sec - sec) * 1e9));
-        // avoid rounding errors
-        sec += (nsec / 1000000000l);
-        nsec %= 1000000000l;
-
-        builtin_interfaces::msg::Duration duration;
-        duration.sec = sec;
-        duration.nanosec = nsec;
-        return duration;
-    }
-}
-
 
 struct TebAssertionFailureException : public std::runtime_error
-inline float cos_fast(float angle)
 {
-    {
-        TebAssertionFailureException(const std::string &msg)
-        // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
+    TebAssertionFailureException(const std::string &msg)
         : std::runtime_error(msg)
-        constexpr float PI = 3.14159265358f;
-        {
-            constexpr float PI2 = 2 * PI;
-            RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), msg.c_str());
-        }
-    };
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), msg.c_str());
+    }
+};
 
 #define TEB_ASSERT_MSG_IMPL(...) \
     { \
@@ -218,36 +210,28 @@ inline float cos_fast(float angle)
         throw TebAssertionFailureException(msg); \
     }
 
-
-    template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
-            angle = (angle > 0) ? -angle : angle;
-    void teb_assert_msg_impl(const T expression, ARGS ...args) {
-        angle += PI/2;
-        if(expression == 0) {
-            char arg_string[1024];
-            std::sprintf(arg_string, args..., "");
-            const std::string msg(arg_string);
-            throw TebAssertionFailureException(msg);
-        }
-    }
-
-
-    template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_pointer<T>::value>* = nullptr>
-    return sin_fast(angle);
-    void teb_assert_msg_impl(const T expression, ARGS ...args) {
-        if(expression == nullptr) {
-            char arg_string[1024];
-            std::sprintf(arg_string, args..., "");
-            const std::string msg(arg_string);
-            throw TebAssertionFailureException(msg);
-        }
+template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+void teb_assert_msg_impl(const T expression, ARGS ...args) {
+    if(expression == 0) {
+        char arg_string[1024];
+        std::sprintf(arg_string, args..., "");
+        const std::string msg(arg_string);
+        throw TebAssertionFailureException(msg);
     }
 }
 
+template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_pointer<T>::value>* = nullptr>
+void teb_assert_msg_impl(const T expression, ARGS ...args) {
+    if(expression == nullptr) {
+        char arg_string[1024];
+        std::sprintf(arg_string, args..., "");
+        const std::string msg(arg_string);
+        throw TebAssertionFailureException(msg);
+    }
+}
 
 #define TEB_ASSERT_MSG(expression, ...) teb_assert_msg_impl(expression, __VA_ARGS__)
 
 } // namespace teb_local_planner
-
 
 #endif /* MISC_H */

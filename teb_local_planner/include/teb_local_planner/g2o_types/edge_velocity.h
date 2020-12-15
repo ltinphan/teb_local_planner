@@ -103,14 +103,15 @@ public:
     if (cfg_->trajectory.exact_arc_length && angle_diff != 0)
     {
       double sin;
-      cfg_->sin(angle_diff / 2, sin);
+      sin = cfg_->sin(angle_diff / 2);
       double radius = dist / (2*sin);
       dist = fabs( angle_diff * radius ); // actual arg length!
     }
     double vel = dist / deltaT->estimate();
 
     double sin, cos;
-    cfg_->sincos(conf1->theta(), sin, cos);
+    sin = cfg_->sin(conf1->theta());
+    cos = cfg_->sin(conf1->theta());
     vel *= fast_sigmoid( 100 * (deltaS.x()*cos + deltaS.y()*sin) ); // consider direction
     
     const double omega = angle_diff / deltaT->estimate();
