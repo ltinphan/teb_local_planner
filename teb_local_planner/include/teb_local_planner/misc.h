@@ -178,7 +178,77 @@ inline float cos_fast(float angle)
 
   return sin_fast(angle);
 }
+    inline builtin_interfaces::msg::Duration durationFromSec(double t_sec)
+    {
+        int32_t sec;
+        uint32_t nsec;
+        sec = static_cast<int32_t>(floor(t_sec));
+        nsec = static_cast<int32_t>(std::round((t_sec - sec) * 1e9));
+        // avoid rounding errors
+        sec += (nsec / 1000000000l);
+        nsec %= 1000000000l;
+
+        builtin_interfaces::msg::Duration duration;
+        duration.sec = sec;
+        duration.nanosec = nsec;
+        return duration;
+    }
+}
+
+
+struct TebAssertionFailureException : public std::runtime_error
+inline float cos_fast(float angle)
+{
+    {
+        TebAssertionFailureException(const std::string &msg)
+        // Code borrowed from https://github.com/kennyalive/fast-sine-cosine
+        : std::runtime_error(msg)
+        constexpr float PI = 3.14159265358f;
+        {
+            constexpr float PI2 = 2 * PI;
+            RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), msg.c_str());
+        }
+    };
+
+#define TEB_ASSERT_MSG_IMPL(...) \
+    { \
+        char arg_string[1024]; \
+        std::sprintf(arg_string, __VA_ARGS__); \
+        const std::string msg(arg_string); \
+        throw TebAssertionFailureException(msg); \
+    }
+
+
+    template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+            angle = (angle > 0) ? -angle : angle;
+    void teb_assert_msg_impl(const T expression, ARGS ...args) {
+        angle += PI/2;
+        if(expression == 0) {
+            char arg_string[1024];
+            std::sprintf(arg_string, args..., "");
+            const std::string msg(arg_string);
+            throw TebAssertionFailureException(msg);
+        }
+    }
+
+
+    template<typename T, typename ...ARGS, typename std::enable_if_t<std::is_pointer<T>::value>* = nullptr>
+    return sin_fast(angle);
+    void teb_assert_msg_impl(const T expression, ARGS ...args) {
+        if(expression == nullptr) {
+            char arg_string[1024];
+            std::sprintf(arg_string, args..., "");
+            const std::string msg(arg_string);
+            throw TebAssertionFailureException(msg);
+        }
+    }
+}
+
+
+#define TEB_ASSERT_MSG(expression, ...) teb_assert_msg_impl(expression, __VA_ARGS__)
 
 } // namespace teb_local_planner
+} // namespace teb_local_planner
+
 
 #endif /* MISC_H */
