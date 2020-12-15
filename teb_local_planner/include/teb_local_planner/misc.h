@@ -39,14 +39,17 @@
 #ifndef MISC_H
 #define MISC_H
 
-#include <Eigen/Core>
-#include <boost/utility.hpp>
-#include <boost/type_traits.hpp>
+#include <builtin_interfaces/msg/duration.hpp>
 
+#include <Eigen/Core>
+
+#include <exception>
+#include <type_traits>
+
+#include <rclcpp/logging.hpp>
 
 namespace teb_local_planner
 {
-
 #define SMALL_NUM 0.00000001
 
 //! Symbols for left/none/right rotations      
@@ -145,7 +148,7 @@ inline const T& get_const_reference(const T* ptr) {return *ptr;}
  * @return  If \c T is a pointer, return const *T (leading to const T&), otherwise const T& with out pointer-to-ref conversion
  */
 template<typename T>
-inline const T& get_const_reference(const T& val, typename boost::disable_if<boost::is_pointer<T> >::type* dummy = 0) {return val;}
+inline const T& get_const_reference(const T& val, typename std::enable_if_t<!std::is_pointer<T>::value, T>* dummy = nullptr) {return val;}
 
 inline float sin_fast(float angle)
 {
