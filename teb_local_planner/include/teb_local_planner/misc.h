@@ -248,7 +248,6 @@ inline float cos_fast(float angle)
 #define TEB_ASSERT_MSG(expression, ...) teb_assert_msg_impl(expression, __VA_ARGS__)
 
 } // namespace teb_local_planner
-} // namespace teb_local_planner
 
 
 #endif /* MISC_H */
