@@ -67,7 +67,7 @@ namespace teb_local_planner
 
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
-                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
+                                           custom_via_points_active_(false), no_infeasible_plans_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
@@ -95,7 +95,7 @@ void TebLocalPlannerROS::initialize()
   {	
     // declare parameters (ros2-dashing)
     intra_proc_node_.reset( 
-            new rclcpp::Node("costmap_converter", nh_->get_namespace(), 
+            new rclcpp::Node("costmap_converter", nh_->get_namespace(),
               rclcpp::NodeOptions()));
     cfg_->declareParameters(nh_, name_);
 
@@ -212,6 +212,8 @@ void TebLocalPlannerROS::configure(
     const std::shared_ptr<tf2_ros::Buffer> & tf,
     const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> & costmap_ros) {
   nh_ = node;
+
+
   costmap_ros_ = costmap_ros;
   tf_ = tf;
   name_ = name;
@@ -248,10 +250,7 @@ void TebLocalPlannerROS::setPlan(const nav_msgs::msg::Path & orig_global_plan)
 
   // we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
   // the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.  
-            
-  // reset goal_reached_ flag
-  goal_reached_ = false;
-  
+
   return;
 }
 
@@ -274,7 +273,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   cmd_vel.twist.linear.x = 0;
   cmd_vel.twist.linear.y = 0;
   cmd_vel.twist.angular.z = 0;
-  goal_reached_ = false;  
   
   // Get robot pose
   robot_pose_ = PoseSE2(pose.pose);
@@ -310,17 +308,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   nav_2d_utils::transformPose(tf_, robot_pose.header.frame_id, global_plan_.back(), global_goal, transform_tolerance);
   //tf::poseStampedMsgToTF(global_plan_.back(), global_goal);
   //global_goal.setData( tf_plan_to_global * global_goal );
-  double dx = global_goal.pose.position.x - robot_pose_.x();
-  double dy = global_goal.pose.position.y - robot_pose_.y();
-  double delta_orient = g2o::normalize_theta( tf2::getYaw(global_goal.pose.orientation) - robot_pose_.theta() );
-  if(fabs(std::sqrt(dx*dx+dy*dy)) < cfg_->goal_tolerance.xy_goal_tolerance
-    && fabs(delta_orient) < cfg_->goal_tolerance.yaw_goal_tolerance
-    && (!cfg_->goal_tolerance.complete_global_plan || via_points_.size() == 0))
-  {
-    goal_reached_ = true;
-    return cmd_vel;
-  }
-  
   
   // check if we should enter any backup mode and apply settings
   configureBackupModes(transformed_plan, goal_idx);
@@ -384,8 +371,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     last_cmd_ = cmd_vel.twist;
     return cmd_vel;
   }
-    
-  
+
+
     
   // Do not allow config changes during the following optimization step
   std::lock_guard<std::mutex> cfg_lock(cfg_->configMutex());
@@ -415,22 +402,22 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
   // Always true since we do not use costmap. isTrajectoryFeasible only uses costmap to check feasibility.
   // Therefore we do not need to check whether trajectory feasible or not.
-  bool feasible = true; //planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-  //  if (!feasible)
-  //  {
-  //    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-  //
-  //    // now we reset everything to start again with the initialization of new trajectories.
-  //    planner_->clearPlanner();
-  //
-  //    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-  //    time_last_infeasible_plan_ = nh_->now();
-  //    last_cmd_ = cmd_vel.twist;
-  //
-  //    throw nav2_core::PlannerException(
-  //      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-  //    );
-  //  }
+  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
+    if (!feasible)
+    {
+      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+
+      // now we reset everything to start again with the initialization of new trajectories.
+      planner_->clearPlanner();
+
+      ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+      time_last_infeasible_plan_ = nh_->now();
+      last_cmd_ = cmd_vel.twist;
+
+      throw nav2_core::PlannerException(
+        std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+      );
+    }
 
   // Get the velocity command for this sampling interval
   if (!planner_->getVelocityCommand(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->trajectory.control_look_ahead_poses))
@@ -483,23 +470,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   visualization_->publishGlobalPlan(global_plan_);
   
   return cmd_vel;
-}
-
-bool TebLocalPlannerROS::isGoalReached(
-  const geometry_msgs::msg::PoseStamped &,
-  const geometry_msgs::msg::Twist &) {
-  return isGoalReached();
-}
-
-bool TebLocalPlannerROS::isGoalReached()
-{
-  if (goal_reached_)
-  {
-    RCLCPP_INFO(nh_->get_logger(), "GOAL Reached!");
-    planner_->clearPlanner();
-    return true;
-  }
-  return false;
 }
 
 void TebLocalPlannerROS::updateObstacleContainerWithCostmap()
