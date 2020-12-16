@@ -403,10 +403,10 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   // Always true since we do not use costmap. isTrajectoryFeasible only uses costmap to check feasibility.
   // Therefore we do not need to check whether trajectory feasible or not.
   bool feasible;
-  planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-    if (!feasible)
-    {
-        RCLCPP_ERROR(nh_->get_logger(), "Path is infeasible, but we will disregard that");
+//  planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
+//    if (!feasible)
+//    {
+//        RCLCPP_ERROR(nh_->get_logger(), "Path is infeasible, but we will disregard that");
 //      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 //
 //      // now we reset everything to start again with the initialization of new trajectories.
