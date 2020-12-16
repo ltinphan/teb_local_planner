@@ -406,18 +406,19 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
     if (!feasible)
     {
-      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-
-      // now we reset everything to start again with the initialization of new trajectories.
-      planner_->clearPlanner();
-
-      ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-      time_last_infeasible_plan_ = nh_->now();
-      last_cmd_ = cmd_vel.twist;
-
-      throw nav2_core::PlannerException(
-        std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-      );
+        RCLCPP_ERROR(nh_->get_logger(), "Path is infeasible, but we will disregard that");
+//      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+//
+//      // now we reset everything to start again with the initialization of new trajectories.
+//      planner_->clearPlanner();
+//
+//      ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+//      time_last_infeasible_plan_ = nh_->now();
+//      last_cmd_ = cmd_vel.twist;
+//
+//      throw nav2_core::PlannerException(
+//        std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+//      );
     }
 
   // Get the velocity command for this sampling interval
