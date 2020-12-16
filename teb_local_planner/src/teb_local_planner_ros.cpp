@@ -419,7 +419,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
 //      throw nav2_core::PlannerException(
 //        std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
 //      );
-    }
+//    }
 
   // Get the velocity command for this sampling interval
   if (!planner_->getVelocityCommand(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->trajectory.control_look_ahead_poses))
