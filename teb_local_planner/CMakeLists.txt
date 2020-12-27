@@ -38,6 +38,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(backward_ros REQUIRED)
+find_package(Ceres REQUIRED COMPONENTS SuiteSparse)
 
 message(STATUS "System: ${CMAKE_SYSTEM}")
 ## System dependencies are found with CMake's conventions
