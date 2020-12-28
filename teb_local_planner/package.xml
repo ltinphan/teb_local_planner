@@ -38,6 +38,7 @@
   <depend>teb_msgs</depend>
   <depend>tf2</depend>
   <depend>visualization_msgs</depend>
+  <depend>ceres</depend>
   
   <depend>backward_ros</depend>
   
