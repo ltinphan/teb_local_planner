@@ -38,12 +38,7 @@
   <depend>teb_msgs</depend>
   <depend>tf2</depend>
   <depend>visualization_msgs</depend>
-<<<<<<< HEAD
   <depend>libceres-dev</depend>
-=======
-  <depend>ceres</depend>
-  
->>>>>>> aea5aad0e89c8fc7923d155fea620c49f25dff28
   <depend>backward_ros</depend>
   
   <exec_depend>nav2_bringup</exec_depend>
