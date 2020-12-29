@@ -1221,7 +1221,7 @@ void TebLocalPlannerROS::deactivate() {
 }
 void TebLocalPlannerROS::cleanup() {
   visualization_->on_cleanup();
-  //costmap_converter_->stopWorker();
+  costmap_converter_->stopWorker();
   
   return;
 }
