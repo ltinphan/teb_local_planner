@@ -67,7 +67,8 @@ namespace teb_local_planner
 
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
-                                           custom_via_points_active_(false), no_infeasible_plans_(0),
+                                           costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
+                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
@@ -351,7 +352,10 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   obstacles_.clear();
   
   // Update obstacle container with costmap information or polygons provided by a costmap_converter plugin
-  updateObstacleContainerWithCostmap();
+  if (costmap_converter_)
+    updateObstacleContainerWithCostmapConverter();
+  else
+    updateObstacleContainerWithCostmap();
   
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
@@ -505,7 +509,8 @@ void TebLocalPlannerROS::updateObstacleContainerWithCostmap()
 void TebLocalPlannerROS::updateObstacleContainerWithCostmapConverter()
 {
   if (!costmap_converter_)
-      return;
+    return;
+
   //Get obstacles from costmap converter
   costmap_converter::ObstacleArrayConstPtr obstacles = costmap_converter_->getObstacles();
   if (!obstacles)
