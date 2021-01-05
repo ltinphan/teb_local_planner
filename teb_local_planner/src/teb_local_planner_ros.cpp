@@ -407,7 +407,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     RCLCPP_WARN(nh_->get_logger(), "TebLocalPlannerROS: the trajectory has diverged. Resetting planner...");
 
     ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-    time_last_infeasible_plan_ = ros::Time::now();
+    time_last_infeasible_plan_ = nh_->now();
     last_cmd_ = cmd_vel.twist;
     //return mbf_msgs::ExePathResult::NO_VALID_CMD;
     return cmd_vel;
