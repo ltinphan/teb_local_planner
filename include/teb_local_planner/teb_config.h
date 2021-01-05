@@ -103,6 +103,7 @@ public:
     bool cmd_angle_instead_rotvel; //!< Substitute the rotational velocity in the commanded velocity message by the corresponding steering angle (check 'axles_distance')
     bool is_footprint_dynamic; //<! If true, updated the footprint before checking trajectory feasibility
     bool use_proportional_saturation; //<! If true, reduce all twists components (linear x and y, and angular z) proportionally if any exceed its corresponding bounds, instead of saturating each one individually
+    double transform_tolerance = 0.5; //<! Tolerance when querying the TF Tree for a transformation (seconds)
   } robot; //!< Robot related parameters
 
   //! Goal tolerance related parameters
@@ -177,11 +178,13 @@ public:
     bool enable_multithreading; //!< Activate multiple threading for planning multiple trajectories in parallel.
     bool simple_exploration; //!< If true, distinctive trajectories are explored using a simple left-right approach (pass each obstacle on the left or right side) for path generation, otherwise sample possible roadmaps randomly in a specified region between start and goal.
     int max_number_classes; //!< Specify the maximum number of allowed alternative homotopy classes (limits computational effort)
+    int max_number_plans_in_current_class; //!< Specify the maximum number of trajectories to try that are in the same homotopy class as the current trajectory (helps avoid local minima)
     double selection_cost_hysteresis; //!< Specify how much trajectory cost must a new candidate have w.r.t. a previously selected trajectory in order to be selected (selection if new_cost < old_cost*factor).
     double selection_prefer_initial_plan; //!< Specify a cost reduction in the interval (0,1) for the trajectory in the equivalence class of the initial plan.
     double selection_obst_cost_scale; //!< Extra scaling of obstacle cost terms just for selecting the 'best' candidate.
     double selection_viapoint_cost_scale; //!< Extra scaling of via-point cost terms just for selecting the 'best' candidate.
     bool selection_alternative_time_cost; //!< If true, time cost is replaced by the total transition time.
+    double selection_dropping_probability; //!< At each planning cycle, TEBs other than the current 'best' one will be randomly dropped with this probability. Prevents becoming 'fixated' on sub-optimal alternative homotopies.
     double switching_blocking_period; //!< Specify a time duration in seconds that needs to be expired before a switch to new equivalence class is allowed
 
     int roadmap_graph_no_samples; //! < Specify the number of samples generated for creating the roadmap graph, if simple_exploration is turend off.
@@ -213,6 +216,8 @@ public:
     double oscillation_omega_eps; //!< Threshold for the average normalized angular velocity: if oscillation_v_eps and oscillation_omega_eps are not exceeded both, a possible oscillation is detected
     double oscillation_recovery_min_duration; //!< Minumum duration [sec] for which the recovery mode is activated after an oscillation is detected.
     double oscillation_filter_duration; //!< Filter length/duration [sec] for the detection of oscillations
+    bool divergence_detection_enable; //!< True to enable divergence detection.
+    int divergence_detection_max_chi_squared; //!< Maximum acceptable Mahalanobis distance above which it is assumed that the optimization diverged.
   } recovery; //!< Parameters related to recovery and backup strategies
 
 
@@ -337,6 +342,7 @@ public:
     hcp.selection_obst_cost_scale = 100.0;
     hcp.selection_viapoint_cost_scale = 1.0;
     hcp.selection_alternative_time_cost = false;
+    hcp.selection_dropping_probability = 0.0;
 
     hcp.obstacle_keypoint_offset = 0.1;
     hcp.obstacle_heading_threshold = 0.45;
