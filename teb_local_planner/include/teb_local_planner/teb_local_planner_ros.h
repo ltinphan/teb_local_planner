@@ -65,7 +65,7 @@
 #include <tf2/transform_datatypes.h>
 
 // costmap
-// #include <costmap_converter/costmap_converter_interface.h>
+#include <costmap_converter/costmap_converter_interface.h>
 
 #include <nav2_util/lifecycle_node.hpp>
 #include <nav2_costmap_2d/costmap_2d_ros.hpp>
@@ -137,20 +137,6 @@ public:
   geometry_msgs::msg::TwistStamped computeVelocityCommands(
     const geometry_msgs::msg::PoseStamped &pose,
     const geometry_msgs::msg::Twist &velocity);
-
-  bool isGoalReached(
-    const geometry_msgs::msg::PoseStamped & pose,
-    const geometry_msgs::msg::Twist & velocity) ;
-
-  /**
-    * @brief  Check if the goal pose has been achieved
-    * 
-    * The actual check is performed in computeVelocityCommands(). 
-    * Only the status flag is checked here.
-    * @return True if achieved, false otherwise
-    */
-  bool isGoalReached();
-  
   
     
   /** @name Public utility functions/methods */
@@ -385,8 +371,8 @@ private:
   
   std::vector<geometry_msgs::msg::PoseStamped> global_plan_; //!< Store the current global plan
   
-  //pluginlib::ClassLoader<costmap_converter::BaseCostmapToPolygons> costmap_converter_loader_; //!< Load costmap converter plugins at runtime
-  //std::shared_ptr<costmap_converter::BaseCostmapToPolygons> costmap_converter_; //!< Store the current costmap_converter
+  pluginlib::ClassLoader<costmap_converter::BaseCostmapToPolygons> costmap_converter_loader_; //!< Load costmap converter plugins at runtime
+  std::shared_ptr<costmap_converter::BaseCostmapToPolygons> costmap_converter_; //!< Store the current costmap_converter
 
   //std::shared_ptr< dynamic_reconfigure::Server<TebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
   rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
@@ -400,7 +386,6 @@ private:
   PoseSE2 robot_pose_; //!< Store current robot pose
   PoseSE2 robot_goal_; //!< Store current robot goal
   geometry_msgs::msg::Twist robot_vel_; //!< Store current robot translational and angular velocity (vx, vy, omega)
-  bool goal_reached_; //!< store whether the goal is reached or not
   rclcpp::Time time_last_infeasible_plan_; //!< Store at which time stamp the last infeasible plan was detected
   int no_infeasible_plans_; //!< Store how many times in a row the planner failed to find a feasible plan.
   rclcpp::Time time_last_oscillation_; //!< Store at which time stamp the last oscillation was detected

@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 project(teb_local_planner)
 
 # Set to Release in order to speed up the program significantly
-set(CMAKE_BUILD_TYPE Release) #None, Debug, Release, RelWithDebInfo, MinSizeRel
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release) #None, Debug, Release, RelWithDebInfo, MinSizeRel
+endif()
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -15,7 +17,7 @@ endif()
 
 ## Find catkin macros and libraries
 find_package(ament_cmake REQUIRED)
-#find_package(costmap_converter REQUIRED)
+find_package(costmap_converter REQUIRED)
 find_package(dwb_critics REQUIRED)
 find_package(nav_2d_utils REQUIRED)
 find_package(nav2_core REQUIRED)
@@ -35,6 +37,8 @@ find_package(tf2_eigen REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(backward_ros REQUIRED)
+
 
 message(STATUS "System: ${CMAKE_SYSTEM}")
 ## System dependencies are found with CMake's conventions
@@ -43,6 +47,7 @@ message(STATUS "${CMAKE_MODULE_PATH}")
 find_package(SUITESPARSE REQUIRED)
 find_package(G2O REQUIRED)
 find_package(Boost REQUIRED)
+find_package(Ceres REQUIRED COMPONENTS SuiteSparse)
 
 # Eigen3 FindScript Backward compatibility (ubuntu saucy)
 # Since FindEigen.cmake is deprecated starting from jade.
@@ -56,8 +61,8 @@ elseif (EXISTS "FindEigen.cmake")
   e.g. by adding it to ${PROJECT_SOURCE_DIR}/cmake_modules.")
 endif (EXISTS "FindEigen3.cmake")
 
-set(EXTERNAL_INCLUDE_DIRS ${Eigen_INCLUDE_DIRS} ${SUITESPARSE_INCLUDE_DIRS} ${G2O_INCLUDE_DIR})
-set(EXTERNAL_LIBS ${Boost_LIBRARIES} ${SUITESPARSE_LIBRARIES} ${G2O_LIBRARIES})
+set(EXTERNAL_INCLUDE_DIRS ${Eigen_INCLUDE_DIRS} ${SUITESPARSE_INCLUDE_DIRS} ${G2O_INCLUDE_DIR} ${CERES_INCLUDES} /code/g2o)
+set(EXTERNAL_LIBS ${Boost_LIBRARIES} ${SUITESPARSE_LIBRARIES} ${G2O_LIBRARIES} ${CERES_LIBRARIES})
 
 ###########
 ## Build ##
@@ -84,7 +89,7 @@ add_library(teb_local_planner SHARED
 )
 
 set(ament_dependencies
-    #costmap_converter
+    costmap_converter
     dwb_critics
     nav_2d_utils
     nav2_core
@@ -132,7 +137,9 @@ install(DIRECTORY include/
 install(FILES
   teb_local_planner_plugin.xml
   DESTINATION share
-)
+  )
+
+install(PROGRAMS scripts/cmd_vel_to_ackermann_drive.py DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 

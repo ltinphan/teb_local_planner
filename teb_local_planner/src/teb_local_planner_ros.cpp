@@ -67,8 +67,9 @@ namespace teb_local_planner
 
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
-                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
-                                           last_preferred_rotdir_(RotType::none), initialized_(false)
+                                           costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
+                                           custom_via_points_active_(false), no_infeasible_plans_(0),
+                                           last_preferred_rotdir_(RotType::none), initialized_(false))
 {
 }
 
@@ -248,10 +249,7 @@ void TebLocalPlannerROS::setPlan(const nav_msgs::msg::Path & orig_global_plan)
 
   // we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
   // the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.  
-            
-  // reset goal_reached_ flag
-  goal_reached_ = false;
-  
+
   return;
 }
 
@@ -274,7 +272,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   cmd_vel.twist.linear.x = 0;
   cmd_vel.twist.linear.y = 0;
   cmd_vel.twist.angular.z = 0;
-  goal_reached_ = false;  
   
   // Get robot pose
   robot_pose_ = PoseSE2(pose.pose);
@@ -310,17 +307,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   nav_2d_utils::transformPose(tf_, robot_pose.header.frame_id, global_plan_.back(), global_goal, transform_tolerance);
   //tf::poseStampedMsgToTF(global_plan_.back(), global_goal);
   //global_goal.setData( tf_plan_to_global * global_goal );
-  double dx = global_goal.pose.position.x - robot_pose_.x();
-  double dy = global_goal.pose.position.y - robot_pose_.y();
-  double delta_orient = g2o::normalize_theta( tf2::getYaw(global_goal.pose.orientation) - robot_pose_.theta() );
-  if(fabs(std::sqrt(dx*dx+dy*dy)) < cfg_->goal_tolerance.xy_goal_tolerance
-    && fabs(delta_orient) < cfg_->goal_tolerance.yaw_goal_tolerance
-    && (!cfg_->goal_tolerance.complete_global_plan || via_points_.size() == 0))
-  {
-    goal_reached_ = true;
-    return cmd_vel;
-  }
-  
   
   // check if we should enter any backup mode and apply settings
   configureBackupModes(transformed_plan, goal_idx);
@@ -364,7 +350,10 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   obstacles_.clear();
   
   // Update obstacle container with costmap information or polygons provided by a costmap_converter plugin
-  updateObstacleContainerWithCostmap();
+  if (costmap_converter_)
+    updateObstacleContainerWithCostmapConverter();
+  else
+    updateObstacleContainerWithCostmap();
   
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
@@ -485,23 +474,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   return cmd_vel;
 }
 
-bool TebLocalPlannerROS::isGoalReached(
-  const geometry_msgs::msg::PoseStamped &,
-  const geometry_msgs::msg::Twist &) {
-  return isGoalReached();
-}
-
-bool TebLocalPlannerROS::isGoalReached()
-{
-  if (goal_reached_)
-  {
-    RCLCPP_INFO(nh_->get_logger(), "GOAL Reached!");
-    planner_->clearPlanner();
-    return true;
-  }
-  return false;
-}
-
 void TebLocalPlannerROS::updateObstacleContainerWithCostmap()
 {  
   // Add costmap obstacles if desired
@@ -534,10 +506,9 @@ void TebLocalPlannerROS::updateObstacleContainerWithCostmap()
 
 void TebLocalPlannerROS::updateObstacleContainerWithCostmapConverter()
 {
-  //if (!costmap_converter_)
-  //  return;
-  return;  // no costmap
-    /*
+  if (!costmap_converter_)
+    return;
+
   //Get obstacles from costmap converter
   costmap_converter::ObstacleArrayConstPtr obstacles = costmap_converter_->getObstacles();
   if (!obstacles)
@@ -575,7 +546,7 @@ void TebLocalPlannerROS::updateObstacleContainerWithCostmapConverter()
     // Set velocity, if obstacle is moving
     if(!obstacles_.empty())
       obstacles_.back()->setCentroidVelocity(obstacles->obstacles[i].velocities, obstacles->obstacles[i].orientation);
-  }*/
+  }
 }
 
 
