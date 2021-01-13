@@ -69,7 +69,7 @@ TebLocalPlannerROS::TebLocalPlannerROS()
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
                                            costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
                                            custom_via_points_active_(false), no_infeasible_plans_(0),
-                                           last_preferred_rotdir_(RotType::none), initialized_(false))
+                                           last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
 
@@ -136,7 +136,7 @@ void TebLocalPlannerROS::initialize()
     //Initialize a costmap to polygon converter
     if (!cfg_->obstacles.costmap_converter_plugin.empty())
     {
-      /*try
+      try
       {
         costmap_converter_ = costmap_converter_loader_.createSharedInstance(cfg_->obstacles.costmap_converter_plugin);
         std::string converter_name = costmap_converter_loader_.getName(cfg_->obstacles.costmap_converter_plugin);
@@ -156,7 +156,7 @@ void TebLocalPlannerROS::initialize()
         RCLCPP_INFO(nh_->get_logger(),
                     "The specified costmap converter plugin cannot be loaded. All occupied costmap cells are treaten as point obstacles. Error message: %s", ex.what());
         costmap_converter_.reset();
-      }*/
+      }
     }
     else {
       RCLCPP_INFO(nh_->get_logger(), "No costmap conversion plugin specified. All occupied costmap cells are treaten as point obstacles.");
@@ -1224,7 +1224,7 @@ void TebLocalPlannerROS::deactivate() {
 }
 void TebLocalPlannerROS::cleanup() {
   visualization_->on_cleanup();
-  //costmap_converter_->stopWorker();
+  costmap_converter_->stopWorker();
   
   return;
 }
