@@ -137,7 +137,7 @@ public:
   geometry_msgs::msg::TwistStamped computeVelocityCommands(
     const geometry_msgs::msg::PoseStamped &pose,
     const geometry_msgs::msg::Twist &velocity);
-
+  
     
   /** @name Public utility functions/methods */
   //@{
