@@ -63,6 +63,7 @@ public:
   using UniquePtr = std::unique_ptr<TebConfig>;
   
   std::string odom_topic; //!< Topic name of the odometry message, provided by the robot driver or simulator
+  std::string custom_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
   std::string custom_narrow_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
   std::string map_frame; //!< Global planning frame
   std::string node_name; //!< node name used for parameter event callback
@@ -248,6 +249,7 @@ public:
   {
 
     odom_topic = "odom";
+    custom_obst_topic = "obstacles";
     custom_narrow_obst_topic = "narrow_obstacles";
     map_frame = "odom";
 
