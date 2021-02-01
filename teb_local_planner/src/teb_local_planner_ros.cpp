@@ -177,13 +177,13 @@ void TebLocalPlannerROS::initialize()
         
     // setup callback for custom obstacles
     custom_obst_sub_ = nh_->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
-                "obstacles", 
+                "obstacles",
                 rclcpp::SystemDefaultsQoS(),
                 std::bind(&TebLocalPlannerROS::customObstacleCB, this, std::placeholders::_1));
 
       // setup callback for custom obstacles
       custom_narrow_obst_sub_ = nh_->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
-              "narrow_obstacles",
+              cfg_->custom_narrow_obst_topic,
               rclcpp::SystemDefaultsQoS(),
               std::bind(&TebLocalPlannerROS::customNarrowObstacleCB, this, std::placeholders::_1));
 
