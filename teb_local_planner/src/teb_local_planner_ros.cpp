@@ -560,75 +560,73 @@ void TebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
 {
   // Add custom obstacles obtained via message
   std::lock_guard<std::mutex> l(custom_obst_mutex_);
-  std::lock_guard<std::mutex> l(custom_narrow_obst_mutex_);
 
-  if (!custom_obstacle_msg_.obstacles.empty())
-  {
-    // We only use the global header to specify the obstacle coordinate system instead of individual ones
-    Eigen::Affine3d obstacle_to_map_eig;
-    try 
-    {
-      geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
+  std::lock_guard<std::mutex> l2(custom_narrow_obst_mutex_);
+
+  if (!custom_obstacle_msg_.obstacles.empty()) {
+      // We only use the global header to specify the obstacle coordinate system instead of individual ones
+      Eigen::Affine3d obstacle_to_map_eig;
+      try {
+          geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
                   global_frame_, tf2::timeFromSec(0),
                   custom_obstacle_msg_.header.frame_id, tf2::timeFromSec(0),
                   custom_obstacle_msg_.header.frame_id, tf2::durationFromSec(0.5));
-      obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
-      //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
-    }
-    catch (tf2::TransformException ex)
-    {
-      RCLCPP_ERROR(nh_->get_logger(), "%s",ex.what());
-      obstacle_to_map_eig.setIdentity();
-    }
-    
-    for (size_t i=0; i<custom_obstacle_msg_.obstacles.size(); ++i)
-    {
-      if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 && custom_obstacle_msg_.obstacles.at(i).radius > 0 ) // circle
-      {
-        Eigen::Vector3d pos( custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z );
-        obstacles_.push_back(ObstaclePtr(new CircularObstacle( (obstacle_to_map_eig * pos).head(2), custom_obstacle_msg_.obstacles.at(i).radius)));
+          obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
+          //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
       }
-      else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 ) // point
-      {
-        Eigen::Vector3d pos( custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z );
-        obstacles_.push_back(ObstaclePtr(new PointObstacle( (obstacle_to_map_eig * pos).head(2) )));
-      }
-      else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2 ) // line
-      {
-        Eigen::Vector3d line_start( custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
-                                    custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
-                                    custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z );
-        Eigen::Vector3d line_end( custom_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
-                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
-                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.back().z );
-        obstacles_.push_back(ObstaclePtr(new LineObstacle( (obstacle_to_map_eig * line_start).head(2),
-                                                           (obstacle_to_map_eig * line_end).head(2) )));
-      }
-      else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.empty())
-      {
-        RCLCPP_INFO(nh_->get_logger(), "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
-        continue;
-      }
-      else // polygon
-      {
-        PolygonObstacle* polyobst = new PolygonObstacle;
-        for (size_t j=0; j<custom_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j)
-        {
-          Eigen::Vector3d pos( custom_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
-                               custom_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
-                               custom_obstacle_msg_.obstacles.at(i).polygon.points[j].z );
-          polyobst->pushBackVertex( (obstacle_to_map_eig * pos).head(2) );
-        }
-        polyobst->finalizePolygon();
-        obstacles_.push_back(ObstaclePtr(polyobst));
+      catch (tf2::TransformException ex) {
+          RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
+          obstacle_to_map_eig.setIdentity();
       }
 
+      for (size_t i = 0; i < custom_obstacle_msg_.obstacles.size(); ++i) {
+          if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 &&
+              custom_obstacle_msg_.obstacles.at(i).radius > 0) // circle
+          {
+              Eigen::Vector3d pos(custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new CircularObstacle((obstacle_to_map_eig * pos).head(2),
+                                                                    custom_obstacle_msg_.obstacles.at(i).radius)));
+          } else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1) // point
+          {
+              Eigen::Vector3d pos(custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new PointObstacle((obstacle_to_map_eig * pos).head(2))));
+          } else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2) // line
+          {
+              Eigen::Vector3d line_start(custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                         custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                         custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              Eigen::Vector3d line_end(custom_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
+                                       custom_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
+                                       custom_obstacle_msg_.obstacles.at(i).polygon.points.back().z);
+              obstacles_.push_back(ObstaclePtr(new LineObstacle((obstacle_to_map_eig * line_start).head(2),
+                                                                (obstacle_to_map_eig * line_end).head(2))));
+          } else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.empty()) {
+              RCLCPP_INFO(nh_->get_logger(),
+                          "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+              continue;
+          } else // polygon
+          {
+              PolygonObstacle *polyobst = new PolygonObstacle;
+              for (size_t j = 0; j < custom_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j) {
+                  Eigen::Vector3d pos(custom_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
+                                      custom_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
+                                      custom_obstacle_msg_.obstacles.at(i).polygon.points[j].z);
+                  polyobst->pushBackVertex((obstacle_to_map_eig * pos).head(2));
+              }
+              polyobst->finalizePolygon();
+              obstacles_.push_back(ObstaclePtr(polyobst));
+          }
+          if(!obstacles_.empty())
+              obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
+
+      }
+  }
       // ADD Narrow isle obstacles
-        if (!custom_narrow_obstacle_msg.obstacles.empty())
+        if (!custom_narrow_obstacle_msg_.obstacles.empty())
         {
             // We only use the global header to specify the obstacle coordinate system instead of individual ones
             Eigen::Affine3d obstacle_to_map_eig;
@@ -636,8 +634,8 @@ void TebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
             {
                 geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
                         global_frame_, tf2::timeFromSec(0),
-                        custom_narrow_obstacle_msg.header.frame_id, tf2::timeFromSec(0),
-                        custom_narrow_obstacle_msg.header.frame_id, tf2::durationFromSec(0.5));
+                        custom_narrow_obstacle_msg_.header.frame_id, tf2::timeFromSec(0),
+                        custom_narrow_obstacle_msg_.header.frame_id, tf2::durationFromSec(0.5));
                 obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
                 //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
             }
@@ -647,58 +645,53 @@ void TebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
                 obstacle_to_map_eig.setIdentity();
             }
 
-            for (size_t i=0; i<custom_narrow_obstacle_msg.obstacles.size(); ++i)
-            {
-                if (custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.size() == 1 && custom_narrow_obstacle_msg.obstacles.at(i).radius > 0 ) // circle
+            for (size_t i=0; i<custom_narrow_obstacle_msg_.obstacles.size(); ++i) {
+                if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 &&
+                    custom_narrow_obstacle_msg_.obstacles.at(i).radius > 0) // circle
                 {
-                    Eigen::Vector3d pos( custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().x,
-                                         custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().y,
-                                         custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().z );
-                    obstacles_.push_back(ObstaclePtr(new CircularObstacle( (obstacle_to_map_eig * pos).head(2), custom_narrow_obstacle_msg.obstacles.at(i).radius)));
-                }
-                else if (custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.size() == 1 ) // point
+                    Eigen::Vector3d pos(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                        custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                        custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+                    obstacles_.push_back(ObstaclePtr(new CircularObstacle((obstacle_to_map_eig * pos).head(2),
+                                                                          custom_narrow_obstacle_msg_.obstacles.at(
+                                                                                  i).radius)));
+                } else if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1) // point
                 {
-                    Eigen::Vector3d pos( custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().x,
-                                         custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().y,
-                                         custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().z );
-                    obstacles_.push_back(ObstaclePtr(new PointObstacle( (obstacle_to_map_eig * pos).head(2) )));
-                }
-                else if (custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.size() == 2 ) // line
+                    Eigen::Vector3d pos(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                        custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                        custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+                    obstacles_.push_back(ObstaclePtr(new PointObstacle((obstacle_to_map_eig * pos).head(2))));
+                } else if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2) // line
                 {
-                    Eigen::Vector3d line_start( custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().x,
-                                                custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().y,
-                                                custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.front().z );
-                    Eigen::Vector3d line_end( custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.back().x,
-                                              custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.back().y,
-                                              custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.back().z );
-                    obstacles_.push_back(ObstaclePtr(new LineObstacle( (obstacle_to_map_eig * line_start).head(2),
-                                                                       (obstacle_to_map_eig * line_end).head(2) )));
-                }
-                else if (custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.empty())
-                {
-                    RCLCPP_INFO(nh_->get_logger(), "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+                    Eigen::Vector3d line_start(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                               custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                               custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+                    Eigen::Vector3d line_end(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
+                                             custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
+                                             custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.back().z);
+                    obstacles_.push_back(ObstaclePtr(new LineObstacle((obstacle_to_map_eig * line_start).head(2),
+                                                                      (obstacle_to_map_eig * line_end).head(2))));
+                } else if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.empty()) {
+                    RCLCPP_INFO(nh_->get_logger(),
+                                "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
                     continue;
-                }
-                else // polygon
+                } else // polygon
                 {
-                    PolygonObstacle* polyobst = new PolygonObstacle;
-                    for (size_t j=0; j<custom_narrow_obstacle_msg.obstacles.at(i).polygon.points.size(); ++j)
-                    {
-                        Eigen::Vector3d pos( custom_narrow_obstacle_msg.obstacles.at(i).polygon.points[j].x,
-                                             custom_narrow_obstacle_msg.obstacles.at(i).polygon.points[j].y,
-                                             custom_narrow_obstacle_msg.obstacles.at(i).polygon.points[j].z );
-                        polyobst->pushBackVertex( (obstacle_to_map_eig * pos).head(2) );
+                    PolygonObstacle *polyobst = new PolygonObstacle;
+                    for (size_t j = 0; j < custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j) {
+                        Eigen::Vector3d pos(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
+                                            custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
+                                            custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points[j].z);
+                        polyobst->pushBackVertex((obstacle_to_map_eig * pos).head(2));
                     }
                     polyobst->finalizePolygon();
                     obstacles_.push_back(ObstaclePtr(polyobst));
                 }
+                if(!obstacles_.empty())
+                    obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
 
-
-      // Set velocity, if obstacle is moving
-      if(!obstacles_.empty())
-        obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
-    }
-  }
+            }
+        }
 }
 
 
@@ -1130,7 +1123,7 @@ void TebLocalPlannerROS::customObstacleCB(const costmap_converter_msgs::msg::Obs
 
 void TebLocalPlannerROS::customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
 {
-    std::lock_guard<std::mutex> l(custom_obst_mutex_);
+    std::lock_guard<std::mutex> l2(custom_narrow_obst_mutex_);
     custom_narrow_obstacle_msg_ = *obst_msg;
 }
 

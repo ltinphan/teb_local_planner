@@ -383,6 +383,7 @@ private:
 
   //std::shared_ptr< dynamic_reconfigure::Server<TebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
   rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
+  rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_narrow_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
   std::mutex custom_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   std::mutex custom_narrow_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   costmap_converter_msgs::msg::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message
