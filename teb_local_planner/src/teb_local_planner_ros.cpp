@@ -178,8 +178,8 @@ void TebLocalPlannerROS::initialize(nav2_util::LifecycleNode::SharedPtr node)
                 std::bind(&TebLocalPlannerROS::customObstacleCB, this, std::placeholders::_1));
 
       // setup callback for custom obstacles
-      custom_narrow_obst_sub_ = nh_->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
-              "narrow_obstacles",
+      custom_narrow_obst_sub_ = node->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
+              cfg_->custom_narrow_obst_topic,
               rclcpp::SystemDefaultsQoS(),
               std::bind(&TebLocalPlannerROS::customNarrowObstacleCB, this, std::placeholders::_1));
 
@@ -284,7 +284,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   } else {
     cfg_->goal_tolerance.xy_goal_tolerance = pose_tolerance.position.x;
   }
-  
+
   // Get robot pose
   robot_pose_ = PoseSE2(pose.pose);
   geometry_msgs::msg::PoseStamped robot_pose;

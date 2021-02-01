@@ -173,6 +173,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
 {
   nh->get_parameter_or(name + "." + "odom_topic", odom_topic, odom_topic);
+  nh->get_parameter_or(name + "." + "custom_narrow_obst_topic", custom_narrow_obst_topic, custom_narrow_obst_topic);
   nh->get_parameter_or(name + "." + "map_frame", map_frame, map_frame);
   
   // Trajectory
