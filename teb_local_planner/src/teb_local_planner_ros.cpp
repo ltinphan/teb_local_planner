@@ -1330,11 +1330,14 @@ void TebLocalPlannerROS::deactivate() {
   return;
 }
 void TebLocalPlannerROS::cleanup() {
+    RCLCPP_INFO(nh_->get_logger(), "cleanup1");
     if(initialized_) {
         planner_->clearPlanner();
     }
+    RCLCPP_INFO(nh_->get_logger(), "cleanup2");
   visualization_->on_cleanup();
-  costmap_converter_->stopWorker();
+    RCLCPP_INFO(nh_->get_logger(), "cleanup3");
+  //costmap_converter_->stopWorker();
   
   return;
 }
