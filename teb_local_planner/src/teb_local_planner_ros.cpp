@@ -68,7 +68,7 @@ namespace teb_local_planner
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
                                            costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
-                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
+                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0), no_infeasible_slowdown_plans_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
@@ -480,7 +480,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
     if (!feasible)
     {
-        cmd_vel.twist.linear.x = 0.2;
+        no_infeasible_slowdown_plans_++;
+        cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (1 +  no_infeasible_slowdown_plans_) ;
+    }
+    else{
+        no_infeasible_slowdown_plans_ = 0;
     }
 
 
