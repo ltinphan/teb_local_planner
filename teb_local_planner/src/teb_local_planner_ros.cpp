@@ -419,22 +419,22 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
   // Always true since we do not use costmap. isTrajectoryFeasible only uses costmap to check feasibility.
   // Therefore we do not need to check whether trajectory feasible or not.
-  bool feasible = true; //planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-  //  if (!feasible)
-  //  {
-  //    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-  //
-  //    // now we reset everything to start again with the initialization of new trajectories.
-  //    planner_->clearPlanner();
-  //
-  //    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-  //    time_last_infeasible_plan_ = nh_->now();
-  //    last_cmd_ = cmd_vel.twist;
-  //
-  //    throw nav2_core::PlannerException(
-  //      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-  //    );
-  //  }
+  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
+    if (!feasible)
+    {
+      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+
+      // now we reset everything to start again with the initialization of new trajectories.
+      planner_->clearPlanner();
+
+      ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+      time_last_infeasible_plan_ = nh_->now();
+      last_cmd_ = cmd_vel.twist;
+
+      throw nav2_core::PlannerException(
+        std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+      );
+    }
 
   // Get the velocity command for this sampling interval
   if (!planner_->getVelocityCommand(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->trajectory.control_look_ahead_poses))
@@ -476,8 +476,15 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   
   // a feasible solution should be found, reset counter
   no_infeasible_plans_ = 0;
-  
-  // store last command (for recovery analysis etc.)
+
+    bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
+    if (!feasible)
+    {
+        cmd_vel.twist.linear.x = 0.2;
+    }
+
+
+    // store last command (for recovery analysis etc.)
   last_cmd_ = cmd_vel.twist;
   
   // Now visualize everything    
@@ -485,6 +492,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
   visualization_->publishGlobalPlan(global_plan_);
+
+
   
   return cmd_vel;
 }
