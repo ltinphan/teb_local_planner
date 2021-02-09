@@ -493,8 +493,19 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   
   // a feasible solution should be found, reset counter
   no_infeasible_plans_ = 0;
-  
-  // store last command (for recovery analysis etc.)
+
+    bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
+    if (!feasible && cfg_->trajectory.feasibility_check)
+    {
+        no_infeasible_slowdown_plans_++;
+        cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (1 +  no_infeasible_slowdown_plans_) ;
+    }
+    else{
+        no_infeasible_slowdown_plans_ = 0;
+    }
+
+
+    // store last command (for recovery analysis etc.)
   last_cmd_ = cmd_vel.twist;
   
   // Now visualize everything    
