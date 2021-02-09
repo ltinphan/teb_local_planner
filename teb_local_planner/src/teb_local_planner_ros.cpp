@@ -436,7 +436,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
 
   bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-  if (!feasible)
+  if (!feasible &&  && cfg_->trajectory.feasibility_check)
   {
     cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
@@ -492,7 +492,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   
   // a feasible solution should be found, reset counter
   no_infeasible_plans_ = 0;
-  
+
   // store last command (for recovery analysis etc.)
   last_cmd_ = cmd_vel.twist;
   
