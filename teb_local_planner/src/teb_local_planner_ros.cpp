@@ -478,7 +478,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   no_infeasible_plans_ = 0;
 
     bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
-    if (!feasible)
+    if (!feasible && cfg_->trajectory.feasibility_check)
     {
         no_infeasible_slowdown_plans_++;
         cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (1 +  no_infeasible_slowdown_plans_) ;
