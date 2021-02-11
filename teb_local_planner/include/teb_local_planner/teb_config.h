@@ -88,7 +88,7 @@ public:
     double force_reinit_new_goal_angular; //!< Reinitialize the trajectory if a previous goal is updated with an angular difference of more than the specified value in radians (skip hot-starting)
     int feasibility_check_no_poses; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
     int feasibility_check_slowdown_no_poses; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
-    int feasibility_check; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
+    bool feasibility_check; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
     bool publish_feedback; //!< Publish planner feedback containing the full trajectory and a list of active obstacles (should be enabled only for evaluation or debugging purposes)
     double min_resolution_collision_check_angular; //! Min angular resolution used during the costmap collision check. If not respected, intermediate samples are added. [rad]
     int control_look_ahead_poses; //! Index of the pose used to extract the velocity command

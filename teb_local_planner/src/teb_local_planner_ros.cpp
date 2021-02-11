@@ -487,6 +487,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     if (!feasible && cfg_->trajectory.feasibility_check && unfeasible_slowdown_pose != -1)
     {
         cmd_vel.twist.linear.x = cmd_vel.twist.linear.x * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
+        cmd_vel.twist.angular.z = cmd_vel.twist.angular.z * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
     }
 
 
@@ -1160,12 +1161,6 @@ void TebLocalPlannerROS::customObstacleCB(const costmap_converter_msgs::msg::Obs
 {
   std::lock_guard<std::mutex> l(custom_obst_mutex_);
   custom_obstacle_msg_ = *obst_msg;  
-}
-
-void TebLocalPlannerROS::customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
-{
-    std::lock_guard<std::mutex> l2(custom_narrow_obst_mutex_);
-    custom_narrow_obstacle_msg_ = *obst_msg;
 }
 
 void TebLocalPlannerROS::customViaPointsCB(const nav_msgs::msg::Path::ConstSharedPtr via_points_msg)
