@@ -631,7 +631,7 @@ int HomotopyClassPlanner::bestTebIdx() const
   return -1;
 }
 
-bool HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic* costmap_model, const std::vector<geometry_msgs::msg::Point>& footprint_spec,
+bool HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic* costmap_model, const std::vector<geometry_msgs::msg::Point>& footprint_spec, int &number_of_feasible_poses,
                                                 double inscribed_radius, double circumscribed_radius, int look_ahead_idx)
 {
   bool feasible = false;
@@ -643,7 +643,7 @@ bool HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCr
       RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), "Couldn't retrieve the best plan");
       return false;
     }
-    feasible = best->isTrajectoryFeasible(costmap_model, footprint_spec, inscribed_radius, circumscribed_radius, look_ahead_idx);
+    feasible = best->isTrajectoryFeasible(costmap_model, footprint_spec, number_of_feasible_poses, inscribed_radius, circumscribed_radius, look_ahead_idx);
     if(!feasible)
     {
       removeTeb(best);

@@ -419,8 +419,9 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
   // Always true since we do not use costmap. isTrajectoryFeasible only uses costmap to check feasibility.
   // Therefore we do not need to check whether trajectory feasible or not.
-  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-    if (!feasible)
+  int unfeasible_pose = 0;
+  bool sl_feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_pose, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
+    if (!sl_feasible && cfg_->trajectory.feasibility_check)
     {
       cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
@@ -475,16 +476,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
   
   // a feasible solution should be found, reset counter
-  no_infeasible_plans_ = 0;
-
-    bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
-    if (!feasible && cfg_->trajectory.feasibility_check)
+    int unfeasible_slowdown_pose = -1;
+    bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_slowdown_pose, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
+    if (!feasible && cfg_->trajectory.feasibility_check && unfeasible_slowdown_pose != -1)
     {
-        no_infeasible_slowdown_plans_++;
-        cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (1 +  no_infeasible_slowdown_plans_) ;
-    }
-    else{
-        no_infeasible_slowdown_plans_ = 0;
+        cmd_vel.twist.linear.x = cmd_vel.twist.linear.x * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
     }
 
 
