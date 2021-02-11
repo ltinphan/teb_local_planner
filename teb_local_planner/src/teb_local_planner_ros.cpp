@@ -483,13 +483,17 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   
   // a feasible solution should be found, reset counter
     int unfeasible_slowdown_pose = -1;
+
+    RCLCPP_INFO(nh_->get_logger(), "Start check");
     bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_slowdown_pose, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
     if (!feasible && cfg_->trajectory.feasibility_check && unfeasible_slowdown_pose != -1)
     {
+        RCLCPP_INFO(nh_->get_logger(), "One of the next poses is unfeasible, slow down...");
         cmd_vel.twist.linear.x = cmd_vel.twist.linear.x * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
         cmd_vel.twist.angular.z = cmd_vel.twist.angular.z * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
     }
 
+    RCLCPP_INFO(nh_->get_logger(), "N. of unfeasible pose %d", unfeasible_slowdown_pose);
 
     // store last command (for recovery analysis etc.)
   last_cmd_ = cmd_vel.twist;
