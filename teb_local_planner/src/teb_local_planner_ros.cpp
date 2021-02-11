@@ -1163,6 +1163,12 @@ void TebLocalPlannerROS::customObstacleCB(const costmap_converter_msgs::msg::Obs
   custom_obstacle_msg_ = *obst_msg;  
 }
 
+void TebLocalPlannerROS::customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
+{
+    std::lock_guard<std::mutex> l2(custom_narrow_obst_mutex_);
+    custom_narrow_obstacle_msg_ = *obst_msg;
+}
+
 void TebLocalPlannerROS::customViaPointsCB(const nav_msgs::msg::Path::ConstSharedPtr via_points_msg)
 {
   RCLCPP_INFO_ONCE(nh_->get_logger(), "Via-points received. This message is printed once.");
