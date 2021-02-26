@@ -1269,14 +1269,14 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
                                                            delta_rot / (n_additional_samples + 1.0));
           intermediate_pose.toPoseMsg(pose2d);
 
-          if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 )
+          if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) > 0 )
           {
             if (visualization_) 
             {
               visualization_->publishInfeasibleRobotPose(intermediate_pose, *robot_model_);
             }
             number_of_feasible_poses = i;
-            RCLCPP_INFO(node_->get_logger(), "Pose score is lower than 0! (Intermediate steps!)");
+            RCLCPP_INFO(node_->get_logger(), "Pose score is higher than 0! (Intermediate steps!)");
             return false;
           }
         }
