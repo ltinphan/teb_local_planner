@@ -1239,13 +1239,13 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
   for (int i=0; i <= look_ahead_idx; ++i)
   {
     teb().Pose(i).toPoseMsg(pose2d);
-    if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 ) {
+    if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) > 0 ) {
       if (visualization_)
       {
         visualization_->publishInfeasibleRobotPose(teb().Pose(i), *robot_model_);
       }
 
-      RCLCPP_INFO(node_->get_logger(), "Pose score is lower than 0!");
+      RCLCPP_INFO(node_->get_logger(), "Pose score is higher than 0!");
       number_of_feasible_poses = i;
       return false;
     }
