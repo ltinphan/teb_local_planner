@@ -643,15 +643,16 @@ bool HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCr
       RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), "Couldn't retrieve the best plan");
       return false;
     }
-    feasible = true;
-    // TODO investigate - because of costmap check for <0 this always returned true, and now we cannot pickup pallets
-    //best->isTrajectoryFeasible(costmap_model, footprint_spec, number_of_feasible_poses, inscribed_radius, circumscribed_radius, look_ahead_idx);
+    best->isTrajectoryFeasible(costmap_model, footprint_spec, number_of_feasible_poses, inscribed_radius, circumscribed_radius, look_ahead_idx);
     if(!feasible)
     {
-      removeTeb(best);
-      if(last_best_teb_ && (last_best_teb_ == best)) // Same plan as before.
-        return feasible;                             // Not failing could result in oscillations between trajectories.
+        return feasible;
     }
+    // do not modify tebs that will be used in the next iteration
+    //removeTeb(best)
+    //  if(last_best_teb_ && (last_best_teb_ == best)) // Same plan as before.
+    //    return feasible;                             // Not failing could result in oscillations between trajectories.
+    //}
   }
   return feasible;
 }

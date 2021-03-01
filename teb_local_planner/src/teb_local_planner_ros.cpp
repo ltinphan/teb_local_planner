@@ -495,7 +495,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
         bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_slowdown_pose,
                                                        robot_inscribed_radius_, robot_circumscribed_radius,
                                                        cfg_->trajectory.feasibility_check_slowdown_no_poses);
-        if (!feasible && cfg_->trajectory.feasibility_check && unfeasible_slowdown_pose != -1) {
+        if (!feasible && unfeasible_slowdown_pose != -1) {
             RCLCPP_INFO(nh_->get_logger(), "One of the next poses is unfeasible, slow down...");
             cmd_vel.twist.linear.x = cmd_vel.twist.linear.x * unfeasible_slowdown_pose /
                                      cfg_->trajectory.feasibility_check_slowdown_no_poses;
