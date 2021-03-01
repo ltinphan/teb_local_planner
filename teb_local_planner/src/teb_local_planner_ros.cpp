@@ -426,21 +426,24 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   // Always true since we do not use costmap. isTrajectoryFeasible only uses costmap to check feasibility.
   // Therefore we do not need to check whether trajectory feasible or not.
   int unfeasible_pose = 0;
-  bool sl_feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_pose, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-    if (!sl_feasible && cfg_->trajectory.feasibility_check)
-    {
-      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+    if (cfg_->trajectory.feasibility_check) {
+        bool sl_feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_pose,
+                                                          robot_inscribed_radius_, robot_circumscribed_radius,
+                                                          cfg_->trajectory.feasibility_check_no_poses);
+        if (!sl_feasible) {
+            cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
-      // now we reset everything to start again with the initialization of new trajectories.
-      planner_->clearPlanner();
+            // now we reset everything to start again with the initialization of new trajectories.
+            planner_->clearPlanner();
 
-      ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-      time_last_infeasible_plan_ = nh_->now();
-      last_cmd_ = cmd_vel.twist;
+            ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+            time_last_infeasible_plan_ = nh_->now();
+            last_cmd_ = cmd_vel.twist;
 
-      throw nav2_core::PlannerException(
-        std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-      );
+            throw nav2_core::PlannerException(
+                    std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+            );
+        }
     }
 
   // Get the velocity command for this sampling interval
@@ -482,14 +485,20 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
   
   // a feasible solution should be found, reset counter
-    int unfeasible_slowdown_pose = -1;
-    bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_slowdown_pose, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_slowdown_no_poses);
-    if (!feasible && cfg_->trajectory.feasibility_check && unfeasible_slowdown_pose != -1)
-    {
-        RCLCPP_INFO(nh_->get_logger(), "One of the next poses is unfeasible, slow down...");
-        cmd_vel.twist.linear.x = cmd_vel.twist.linear.x * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
-        cmd_vel.twist.angular.z = cmd_vel.twist.angular.z * unfeasible_slowdown_pose /  cfg_->trajectory.feasibility_check_slowdown_no_poses;
-        RCLCPP_INFO(nh_->get_logger(), "N. of unfeasible pose %d", unfeasible_slowdown_pose);
+
+    if (cfg_->trajectory.feasibility_check) {
+        int unfeasible_slowdown_pose = -1;
+        bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_slowdown_pose,
+                                                       robot_inscribed_radius_, robot_circumscribed_radius,
+                                                       cfg_->trajectory.feasibility_check_slowdown_no_poses);
+        if (!feasible && cfg_->trajectory.feasibility_check && unfeasible_slowdown_pose != -1) {
+            RCLCPP_INFO(nh_->get_logger(), "One of the next poses is unfeasible, slow down...");
+            cmd_vel.twist.linear.x = cmd_vel.twist.linear.x * unfeasible_slowdown_pose /
+                                     cfg_->trajectory.feasibility_check_slowdown_no_poses;
+            cmd_vel.twist.angular.z = cmd_vel.twist.angular.z * unfeasible_slowdown_pose /
+                                      cfg_->trajectory.feasibility_check_slowdown_no_poses;
+            RCLCPP_INFO(nh_->get_logger(), "N. of unfeasible pose %d", unfeasible_slowdown_pose);
+        }
     }
 
     // store last command (for recovery analysis etc.)
