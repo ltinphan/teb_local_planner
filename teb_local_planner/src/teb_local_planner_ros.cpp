@@ -427,6 +427,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   // Therefore we do not need to check whether trajectory feasible or not.
   int unfeasible_pose = 0;
     if (cfg_->trajectory.feasibility_check) {
+
+        RCLCPP_INFO(nh_->get_logger(), "checking feasibility");
         bool sl_feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_pose,
                                                           robot_inscribed_radius_, robot_circumscribed_radius,
                                                           cfg_->trajectory.feasibility_check_no_poses);
@@ -488,6 +490,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
 
     if (cfg_->trajectory.feasibility_check) {
         int unfeasible_slowdown_pose = -1;
+
+        RCLCPP_INFO(nh_->get_logger(), "checking feasibility for slowdown");
         bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, unfeasible_slowdown_pose,
                                                        robot_inscribed_radius_, robot_circumscribed_radius,
                                                        cfg_->trajectory.feasibility_check_slowdown_no_poses);
