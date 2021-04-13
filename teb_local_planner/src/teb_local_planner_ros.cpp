@@ -325,6 +325,9 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     && (!cfg_->goal_tolerance.complete_global_plan || via_points_.size() == 0))
   {
     goal_reached_ = true;
+    if (cfg_->goal_tolerance.free_goal_vel) {
+        cmd_vel.twist = last_cmd_;
+    }
     return cmd_vel;
   }
 
