@@ -230,6 +230,7 @@ public:
   struct Performance
   {
     bool use_sin_cos_approximation; //!< Use sin and cos approximations to improve performance. The maximum absolute error for these approximations is 1e-3.
+    double global_plan_publish_freq; //!< Use sin and cos approximations to improve performance. The maximum absolute error for these approximations is 1e-3.
   } performance;
 
   /**
@@ -392,6 +393,7 @@ public:
     // Recovery
 
     performance.use_sin_cos_approximation = false;
+    performance.global_plan_publish_freq = 1.0;
 
 
   }

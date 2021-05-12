@@ -170,6 +170,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "divergence_detection_enable", rclcpp::ParameterValue(recovery.divergence_detection_enable));
   declare_parameter_if_not_declared(nh, name + "." + "divergence_detection_max_chi_squared", rclcpp::ParameterValue(recovery.divergence_detection_max_chi_squared));
   declare_parameter_if_not_declared(nh, name + "." + "use_sin_cos_approximation", rclcpp::ParameterValue(performance.use_sin_cos_approximation));
+  declare_parameter_if_not_declared(nh, name + "." + "global_plan_publish_freq", rclcpp::ParameterValue(performance.global_plan_publish_freq));
 }
 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
@@ -305,6 +306,7 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
 
   // Performance
   nh->get_parameter_or(name + "." + "use_sin_cos_approximation", performance.use_sin_cos_approximation, performance.use_sin_cos_approximation);
+  nh->get_parameter_or(name + "." + "global_plan_publish_freq", performance.global_plan_publish_freq, performance.global_plan_publish_freq);
 
   checkParameters();
   checkDeprecated(nh, name);

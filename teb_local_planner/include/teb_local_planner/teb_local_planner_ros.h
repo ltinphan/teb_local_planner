@@ -409,6 +409,7 @@ private:
   PoseSE2 robot_goal_; //!< Store current robot goal
   geometry_msgs::msg::Twist robot_vel_; //!< Store current robot translational and angular velocity (vx, vy, omega)
   rclcpp::Time time_last_infeasible_plan_; //!< Store at which time stamp the last infeasible plan was detected
+  double time_last_published_global_plan_; // Last published global path timestamp in seconds
   int no_infeasible_plans_; //!< Store how many times in a row the planner failed to find a feasible plan.
   rclcpp::Time time_last_oscillation_; //!< Store at which time stamp the last oscillation was detected
   RotType last_preferred_rotdir_; //!< Store recent preferred turning direction
