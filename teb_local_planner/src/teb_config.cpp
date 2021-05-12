@@ -169,6 +169,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
 
     // Performance
     nh->declare_parameter(name + "." + "use_sin_cos_approximation", rclcpp::ParameterValue(performance.use_sin_cos_approximation));
+    nh->declare_parameter(name + "." + "global_plan_publish_freq", rclcpp::ParameterValue(performance.global_plan_publish_freq));
 }
 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
@@ -301,6 +302,7 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
 
   // Performance
   nh->get_parameter_or(name + "." + "use_sin_cos_approximation", performance.use_sin_cos_approximation, performance.use_sin_cos_approximation);
+  nh->get_parameter_or(name + "." + "global_plan_publish_freq", performance.global_plan_publish_freq, performance.global_plan_publish_freq);
 
   checkParameters(nh);
   checkDeprecated(nh, name);
