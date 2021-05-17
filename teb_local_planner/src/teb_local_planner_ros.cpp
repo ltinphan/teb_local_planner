@@ -489,7 +489,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   planner_->visualize();
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
-  if (time_last_published_global_plan_ + cfg_->performance.global_plan_publish_freq < clock_->now().seconds()){
+  if (time_last_published_global_plan_ + 1.0 / cfg_->performance.global_plan_publish_freq < clock_->now().seconds()){
     visualization_->publishGlobalPlan(global_plan_);
     time_last_published_global_plan_ = clock_->now().seconds();
   }
