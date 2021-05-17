@@ -68,7 +68,7 @@ namespace teb_local_planner
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
                                            costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
-                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
+                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0), time_last_published_global_plan_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
@@ -493,8 +493,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   planner_->visualize();
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
-  visualization_->publishGlobalPlan(global_plan_);
-  
+  // .seconds() return floating point seconds, so this function can be used for intervals under 1 second
+  if (time_last_published_global_plan_ + 1.0 / cfg_->performance.global_plan_publish_freq < nh_->now().seconds()){
+    visualization_->publishGlobalPlan(global_plan_);
+    time_last_published_global_plan_ = nh_->now().seconds();
+  }
   return cmd_vel;
 }
 
