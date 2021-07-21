@@ -726,7 +726,7 @@ void TebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
                     obstacles_.push_back(ObstaclePtr(polyobst));
                 }
                 if(!obstacles_.empty())
-                    obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
+                    obstacles_.back()->setCentroidVelocity(custom_narrow_obstacle_msg_.obstacles[i].velocities, custom_narrow_obstacle_msg_.obstacles[i].orientation);
 
             }
         }
