@@ -149,7 +149,10 @@ public:
   void initialize(nav2_util::LifecycleNode::SharedPtr node, const TebConfig& cfg, ObstContainer* obstacles = NULL, RobotFootprintModelPtr robot_model = std::make_shared<PointRobotFootprint>(),
                   TebVisualizationPtr visual = TebVisualizationPtr(), const ViaPointContainer* via_points = NULL);
   
-  
+  /**
+    * @param robot_model Shared pointer to the robot shape model used for optimization (optional)
+    */
+  void updateRobotModel(RobotFootprintModelPtr robot_model );
 
   /** @name Plan a trajectory  */
   //@{
@@ -405,7 +408,12 @@ public:
    *         otherwise \c false (also if no optimization has been called before).
    */
   bool isOptimized() const {return optimized_;};
-	
+
+  /**
+   * @brief Returns true if the planner has diverged.
+   */
+  bool hasDiverged() const override;
+
   /**
    * @brief Compute the cost vector of a given optimization problen (hyper-graph must exist).
    * 
@@ -514,8 +522,19 @@ public:
    *         any obstacle in the costmap, \c false otherwise.
    */
   virtual bool isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic* costmap_model, const std::vector<geometry_msgs::msg::Point>& footprint_spec, double inscribed_radius = 0.0,
-          double circumscribed_radius=0.0, int look_ahead_idx=-1);
+          double circumscribed_radius=0.0, int look_ahead_idx=-1, double feasibility_check_lookahead_distance=-1);
   
+  /**
+   * @brief Check whether the footprint of the robot at the pose touches an obstacle or not.
+   *
+   * @param pose2d Pose to check
+   * @param costmap_model Pointer to the costmap model
+   * @param footprint_spec The specification of the footprint of the robot in world coordinates
+   * @return \c true, if the robot pose is valid, \c false otherwise.
+   */
+  virtual bool isPoseValid(geometry_msgs::msg::Pose2D pose2d, dwb_critics::ObstacleFootprintCritic* costmap_model,
+                           const std::vector<geometry_msgs::msg::Point>& footprint_spec);
+
   //@}
   
 protected:
@@ -618,7 +637,6 @@ protected:
   
   /**
    * @brief Add all edges (local cost functions) related to keeping a distance from static obstacles (legacy association strategy)
-   * @warning do not combine with AddEdgesInflatedObstacles
    * @see EdgeObstacle
    * @see buildGraph
    * @see optimizeGraph

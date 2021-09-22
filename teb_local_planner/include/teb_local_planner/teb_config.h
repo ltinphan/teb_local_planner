@@ -44,6 +44,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <Eigen/Core>
 #include <Eigen/StdVector>
+#include <nav_2d_utils/parameters.hpp>
 
 //#include "teb_local_planner/TebLocalPlannerReconfigureConfig.h"
 #include <teb_local_planner/misc.h>
@@ -68,6 +69,7 @@ public:
   std::string custom_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
   std::string custom_narrow_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
   std::string map_frame; //!< Global planning frame
+  std::string node_name; //!< node name used for parameter event callback
 
   //! Trajectory related parameters
   struct Trajectory
@@ -86,7 +88,8 @@ public:
     bool exact_arc_length; //!< If true, the planner uses the exact arc length in velocity, acceleration and turning rate computations [-> increased cpu time], otherwise the euclidean approximation is used.
     double force_reinit_new_goal_dist; //!< Reinitialize the trajectory if a previous goal is updated with a seperation of more than the specified value in meters (skip hot-starting)
     double force_reinit_new_goal_angular; //!< Reinitialize the trajectory if a previous goal is updated with an angular difference of more than the specified value in radians (skip hot-starting)
-    int feasibility_check_no_poses; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
+    int feasibility_check_no_poses; //!< Specify up to which pose (under the feasibility_check_lookahead_distance) on the predicted plan the feasibility should be checked each sampling interval; if -1, all poses up to feasibility_check_lookahead_distance are checked.
+    double feasibility_check_lookahead_distance; //!< Specify up to which distance (and with an index below feasibility_check_no_poses) from the robot the feasibility should be checked each sampling interval; if -1, all poses up to feasibility_check_no_poses are checked.
     bool publish_feedback; //!< Publish planner feedback containing the full trajectory and a list of active obstacles (should be enabled only for evaluation or debugging purposes)
     double min_resolution_collision_check_angular; //! Min angular resolution used during the costmap collision check. If not respected, intermediate samples are added. [rad]
     int control_look_ahead_poses; //! Index of the pose used to extract the velocity command
@@ -95,6 +98,10 @@ public:
   //! Robot related parameters
   struct Robot
   {
+    double base_max_vel_x; //!< Maximum translational velocity of the robot before speed limit is applied
+    double base_max_vel_x_backwards; //!< Maximum translational velocity of the robot for driving backwards before speed limit is applied
+    double base_max_vel_y; //!< Maximum strafing velocity of the robot (should be zero for non-holonomic robots!) before speed limit is applied
+    double base_max_vel_theta; //!< Maximum angular velocity of the robot before speed limit is applied
     double max_vel_x; //!< Maximum translational velocity of the robot
     double max_vel_x_backwards; //!< Maximum translational velocity of the robot for driving backwards
     double max_vel_y; //!< Maximum strafing velocity of the robot (should be zero for non-holonomic robots!)
@@ -107,15 +114,14 @@ public:
     bool cmd_angle_instead_rotvel; //!< Substitute the rotational velocity in the commanded velocity message by the corresponding steering angle (check 'axles_distance')
     bool is_footprint_dynamic; //<! If true, updated the footprint before checking trajectory feasibility
     bool use_proportional_saturation; //<! If true, reduce all twists components (linear x and y, and angular z) proportionally if any exceed its corresponding bounds, instead of saturating each one individually
+    double transform_tolerance = 0.5; //<! Tolerance when querying the TF Tree for a transformation (seconds)
   } robot; //!< Robot related parameters
 
   //! Goal tolerance related parameters
   struct GoalTolerance
   {
-    double yaw_goal_tolerance; //!< Allowed final orientation error
     double xy_goal_tolerance; //!< Allowed final euclidean distance to the goal position
     bool free_goal_vel; //!< Allow the robot's velocity to be nonzero (usally max_vel) for planning purposes
-    bool complete_global_plan; // true prevents the robot from ending the path early when it cross the end goal
   } goal_tolerance; //!< Goal tolerance related parameters
 
   //! Obstacle related parameters
@@ -181,11 +187,13 @@ public:
     bool enable_multithreading; //!< Activate multiple threading for planning multiple trajectories in parallel.
     bool simple_exploration; //!< If true, distinctive trajectories are explored using a simple left-right approach (pass each obstacle on the left or right side) for path generation, otherwise sample possible roadmaps randomly in a specified region between start and goal.
     int max_number_classes; //!< Specify the maximum number of allowed alternative homotopy classes (limits computational effort)
+    int max_number_plans_in_current_class; //!< Specify the maximum number of trajectories to try that are in the same homotopy class as the current trajectory (helps avoid local minima)
     double selection_cost_hysteresis; //!< Specify how much trajectory cost must a new candidate have w.r.t. a previously selected trajectory in order to be selected (selection if new_cost < old_cost*factor).
     double selection_prefer_initial_plan; //!< Specify a cost reduction in the interval (0,1) for the trajectory in the equivalence class of the initial plan.
     double selection_obst_cost_scale; //!< Extra scaling of obstacle cost terms just for selecting the 'best' candidate.
     double selection_viapoint_cost_scale; //!< Extra scaling of via-point cost terms just for selecting the 'best' candidate.
     bool selection_alternative_time_cost; //!< If true, time cost is replaced by the total transition time.
+    double selection_dropping_probability; //!< At each planning cycle, TEBs other than the current 'best' one will be randomly dropped with this probability. Prevents becoming 'fixated' on sub-optimal alternative homotopies.
     double switching_blocking_period; //!< Specify a time duration in seconds that needs to be expired before a switch to new equivalence class is allowed
 
     int roadmap_graph_no_samples; //! < Specify the number of samples generated for creating the roadmap graph, if simple_exploration is turend off.
@@ -217,6 +225,8 @@ public:
     double oscillation_omega_eps; //!< Threshold for the average normalized angular velocity: if oscillation_v_eps and oscillation_omega_eps are not exceeded both, a possible oscillation is detected
     double oscillation_recovery_min_duration; //!< Minumum duration [sec] for which the recovery mode is activated after an oscillation is detected.
     double oscillation_filter_duration; //!< Filter length/duration [sec] for the detection of oscillations
+    bool divergence_detection_enable; //!< True to enable divergence detection.
+    int divergence_detection_max_chi_squared; //!< Maximum acceptable Mahalanobis distance above which it is assumed that the optimization diverged.
   } recovery; //!< Parameters related to recovery and backup strategies
 
   //! Performance enhancement related parameters
@@ -264,6 +274,7 @@ public:
     trajectory.force_reinit_new_goal_dist = 1;
     trajectory.force_reinit_new_goal_angular = 0.5 * M_PI;
     trajectory.feasibility_check_no_poses = 5;
+    trajectory.feasibility_check_lookahead_distance = -1;
     trajectory.publish_feedback = false;
     trajectory.min_resolution_collision_check_angular = M_PI;
     trajectory.control_look_ahead_poses = 1;
@@ -274,6 +285,10 @@ public:
     robot.max_vel_x_backwards = 0.2;
     robot.max_vel_y = 0.0;
     robot.max_vel_theta = 0.3;
+    robot.base_max_vel_x = robot.max_vel_x;
+    robot.base_max_vel_x_backwards = robot.base_max_vel_x_backwards;
+    robot.base_max_vel_y = robot.base_max_vel_y;
+    robot.base_max_vel_theta = robot.base_max_vel_theta;
     robot.acc_lim_x = 0.5;
     robot.acc_lim_y = 0.5;
     robot.acc_lim_theta = 0.5;
@@ -286,9 +301,7 @@ public:
     // GoalTolerance
 
     goal_tolerance.xy_goal_tolerance = 0.2;
-    goal_tolerance.yaw_goal_tolerance = 0.2;
     goal_tolerance.free_goal_vel = false;
-    goal_tolerance.complete_global_plan = true;
 
     // Obstacles
 
@@ -349,6 +362,7 @@ public:
     hcp.selection_obst_cost_scale = 100.0;
     hcp.selection_viapoint_cost_scale = 1.0;
     hcp.selection_alternative_time_cost = false;
+    hcp.selection_dropping_probability = 0.0;
 
     hcp.obstacle_keypoint_offset = 0.1;
     hcp.obstacle_heading_threshold = 0.45;
@@ -377,7 +391,9 @@ public:
     recovery.oscillation_omega_eps = 0.1;
     recovery.oscillation_recovery_min_duration = 10;
     recovery.oscillation_filter_duration = 10;
-    // Recovery
+    recovery.divergence_detection_enable = false;
+    recovery.divergence_detection_max_chi_squared = 10;
+    // Performance
 
     performance.use_sin_cos_approximation = false;
     performance.global_plan_publish_freq = 1.0;
@@ -394,14 +410,11 @@ public:
   void loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name);
   
   /**
-   * @brief Reconfigure parameters from the dynamic_reconfigure config.
-   * Change parameters dynamically (e.g. with <c>rosrun rqt_reconfigure rqt_reconfigure</c>).
-   * A reconfigure server needs to be instantiated that calls this method in it's callback.
-   * In case of the plugin \e teb_local_planner default values are defined
-   * in \e PROJECT_SRC/cfg/TebLocalPlannerReconfigure.cfg.
-   * @param cfg Config class autogenerated by dynamic_reconfigure according to the cfg-file mentioned above.
+   * @brief Paremeter event callback
+   * @param event The ParameterEvent
    */
-//  void reconfigure(TebLocalPlannerReconfigureConfig& cfg);
+  void on_parameter_event_callback(
+      const rcl_interfaces::msg::ParameterEvent::SharedPtr event);
   
   /**
    * @brief Check parameters and print warnings in case of discrepancies
@@ -409,7 +422,7 @@ public:
    * Call this method whenever parameters are changed using public interfaces to inform the user
    * about some improper uses.
    */
-  void checkParameters(const nav2_util::LifecycleNode::SharedPtr nh) const;
+  void checkParameters() const;
   
   /**
    * @brief Check if some deprecated parameters are found and print warnings
@@ -437,14 +450,15 @@ public:
     else
         sin = std::sin(angle);
   }
-  
+
   /**
    * @brief Return the internal config mutex
    */
   std::mutex& configMutex() {return config_mutex_;}
-  
+
 private:
   std::mutex config_mutex_; //!< Mutex for config accesses and changes
+  rclcpp::Logger logger_{rclcpp::get_logger("TEBLocalPlanner")};
 };
 } // namespace teb_local_planner
 

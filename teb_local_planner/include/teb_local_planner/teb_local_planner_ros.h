@@ -66,9 +66,11 @@
 
 // costmap
 #include <costmap_converter/costmap_converter_interface.h>
+#include "nav2_costmap_2d/costmap_filters/filter_values.hpp"
 
 #include <nav2_util/lifecycle_node.hpp>
 #include <nav2_costmap_2d/costmap_2d_ros.hpp>
+#include <nav_2d_utils/parameters.hpp>
 // dynamic reconfigure
 //#include "teb_local_planner/TebLocalPlannerReconfigureConfig.h>
 //#include <dynamic_reconfigure/server.h>
@@ -106,7 +108,7 @@ public:
    * @param costmap_ros Cost map representing occupied and free space
    */
   void configure(
-    const rclcpp_lifecycle::LifecycleNode::SharedPtr & node,
+    const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
     std::string name,
     const std::shared_ptr<tf2_ros::Buffer> & tf,
     const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> & costmap_ros) override;
@@ -119,7 +121,7 @@ public:
   /**
     * @brief Initializes the teb plugin
     */
-  void initialize();
+  void initialize(nav2_util::LifecycleNode::SharedPtr node);
 
   /**
     * @brief Set the plan that the teb local planner is following
@@ -136,7 +138,8 @@ public:
     */
   geometry_msgs::msg::TwistStamped computeVelocityCommands(
     const geometry_msgs::msg::PoseStamped &pose,
-    const geometry_msgs::msg::Twist &velocity);
+    const geometry_msgs::msg::Twist &velocity),
+    nav2_core::GoalChecker * goal_checker);
 
   bool isGoalReached(
     const geometry_msgs::msg::PoseStamped & pose,
@@ -152,7 +155,8 @@ public:
   bool isGoalReached();
 
 
-    
+
+
   /** @name Public utility functions/methods */
   //@{
   
@@ -170,7 +174,7 @@ public:
    * @param nh const reference to the local rclcpp::Node::SharedPtr
    * @return Robot footprint model used for optimization
    */
-  RobotFootprintModelPtr getRobotFootprintFromParamServer();
+  RobotFootprintModelPtr getRobotFootprintFromParamServer(nav2_util::LifecycleNode::SharedPtr node);
   
   /** 
    * @brief Set the footprint from the given XmlRpcValue.
@@ -259,7 +263,7 @@ protected:
      * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
      */
     void customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
-  
+
    /**
     * @brief Callback for custom via-points
     * @param via_points_msg pointer to the message containing a list of via-points
@@ -371,10 +375,20 @@ protected:
   
   void configureBackupModes(std::vector<geometry_msgs::msg::PoseStamped>& transformed_plan,  int& goal_idx);
   
+  /**
+   * @brief Limits the maximum linear speed of the robot.
+   * @param speed_limit expressed in absolute value (in m/s)
+   * or in percentage from maximum robot speed.
+   * @param percentage Setting speed limit in percentage if true
+   * or in absolute values in false case.
+   */
+  void setSpeedLimit(const double & speed_limit,  const bool & percentage);
+
 private:
   // Definition of member variables
-
-  nav2_util::LifecycleNode::SharedPtr nh_;
+  rclcpp_lifecycle::LifecycleNode::WeakPtr nh_;
+  rclcpp::Logger logger_{rclcpp::get_logger("TEBLocalPlanner")};
+  rclcpp::Clock::SharedPtr clock_;
   rclcpp::Node::SharedPtr intra_proc_node_;
   // external objects (store weak pointers)
   CostmapROSPtr costmap_ros_; //!< Pointer to the costmap ros wrapper, received from the navigation stack
@@ -411,7 +425,6 @@ private:
   PoseSE2 robot_pose_; //!< Store current robot pose
   PoseSE2 robot_goal_; //!< Store current robot goal
   geometry_msgs::msg::Twist robot_vel_; //!< Store current robot translational and angular velocity (vx, vy, omega)
-  bool goal_reached_; //!< store whether the goal is reached or not
   rclcpp::Time time_last_infeasible_plan_; //!< Store at which time stamp the last infeasible plan was detected
   double time_last_published_global_plan_; // Last published global path timestamp in seconds
   int no_infeasible_plans_; //!< Store how many times in a row the planner failed to find a feasible plan.
@@ -429,6 +442,10 @@ private:
   // flags
   bool initialized_; //!< Keeps track about the correct initialization of this class
   std::string name_; //!< Name of plugin ID
+
+  // Subscription for parameter change
+  rclcpp::AsyncParametersClient::SharedPtr parameters_client_;
+  rclcpp::Subscription<rcl_interfaces::msg::ParameterEvent>::SharedPtr parameter_event_sub_;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>teb_local_planner</name>
-  <version>0.8.4</version>
+
+  <version>0.9.1</version>
+
   <description>
     The teb_local_planner package implements a plugin
     to the base_local_planner of the 2D navigation stack.
@@ -38,9 +40,9 @@
   <depend>teb_msgs</depend>
   <depend>tf2</depend>
   <depend>visualization_msgs</depend>
+  <depend>builtin_interfaces</depend>
   <depend>libceres-dev</depend>
   <depend>backward_ros</depend>
-
   <exec_depend>nav2_bringup</exec_depend>
   
   <test_depend>ament_cmake_gtest</test_depend>

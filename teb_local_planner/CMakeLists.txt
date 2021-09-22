@@ -38,7 +38,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(backward_ros REQUIRED)
-
+find_package(builtin_interfaces REQUIRED)
 
 message(STATUS "System: ${CMAKE_SYSTEM}")
 ## System dependencies are found with CMake's conventions
@@ -108,6 +108,7 @@ set(ament_dependencies
     tf2_geometry_msgs
     tf2_ros
     visualization_msgs
+    builtin_interfaces
 )
 ament_target_dependencies(teb_local_planner
    ${ament_dependencies}
@@ -141,7 +142,7 @@ install(FILES
 
 install(PROGRAMS scripts/cmd_vel_to_ackermann_drive.py DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY params DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)
 ament_export_libraries(teb_local_planner)

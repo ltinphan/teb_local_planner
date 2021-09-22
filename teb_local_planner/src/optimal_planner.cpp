@@ -39,6 +39,9 @@
 #include <tf2/time.h>
 #include <tf2_ros/buffer_interface.h>
 
+#include "teb_local_planner/optimal_planner.h"
+
+#include <map>
 // g2o custom edges and vertices for the TEB planner
 #include <teb_local_planner/g2o_types/edge_velocity.h>
 #include <teb_local_planner/g2o_types/edge_velocity_obstacle_ratio.h>
@@ -51,9 +54,6 @@
 #include <teb_local_planner/g2o_types/edge_via_point.h>
 #include <teb_local_planner/g2o_types/edge_prefer_rotdir.h>
 
-#include "teb_local_planner/optimal_planner.h"
-
-#include <map>
 #include <memory>
 #include <limits>
 
@@ -106,6 +106,13 @@ void TebOptimalPlanner::initialize(nav2_util::LifecycleNode::SharedPtr node, con
   vel_goal_.second.linear.y = 0;
   vel_goal_.second.angular.z = 0;
   initialized_ = true;
+
+  setVisualization(visual);
+}
+
+void TebOptimalPlanner::updateRobotModel(RobotFootprintModelPtr robot_model)
+{
+  robot_model_ = robot_model;
 }
 
 
@@ -332,7 +339,9 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
     RCLCPP_WARN(node_->get_logger(), "Cannot build graph, because it is not empty. Call graphClear()!");
     return false;
   }
-  
+
+  optimizer_->setComputeBatchStatistics(cfg_->recovery.divergence_detection_enable);
+
   // add TEB vertices
   AddTEBVertices();
   
@@ -409,8 +418,13 @@ void TebOptimalPlanner::clearGraph()
   // clear optimizer states
   if (optimizer_)
   {
-    //optimizer.edges().clear(); // optimizer.clear deletes edges!!! Therefore do not run optimizer.edges().clear()
-    optimizer_->vertices().clear();  // neccessary, because optimizer->clear deletes pointer-targets (therefore it deletes TEB states!)
+    // we will delete all edges but keep the vertices.
+    // before doing so, we will delete the link from the vertices to the edges.
+    auto& vertices = optimizer_->vertices();
+    for(auto& v : vertices)
+      v.second->edges().clear();
+
+    optimizer_->vertices().clear();  // necessary, because optimizer->clear deletes pointer-targets (therefore it deletes TEB states!)
     optimizer_->clear();
   }
 }
@@ -525,8 +539,7 @@ void TebOptimalPlanner::AddEdgesObstacles(double weight_multiplier)
               }
           }
       }   
-      
-      // create obstacle edges
+
       if (left_obstacle)
         iter_obstacle->push_back(left_obstacle);
       if (right_obstacle)
@@ -1019,6 +1032,24 @@ void TebOptimalPlanner::AddEdgesVelocityObstacleRatio()
   }
 }
 
+bool TebOptimalPlanner::hasDiverged() const
+{
+  // Early returns if divergence detection is not active
+  if (!cfg_->recovery.divergence_detection_enable)
+    return false;
+
+  auto stats_vector = optimizer_->batchStatistics();
+
+  // No statistics yet
+  if (stats_vector.empty())
+    return false;
+
+  // Grab the statistics of the final iteration
+  const auto last_iter_stats = stats_vector.back();
+
+  return last_iter_stats.chi2 > cfg_->recovery.divergence_detection_max_chi_squared;
+}
+
 void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost)
 { 
   // check if graph is empty/exist  -> important if function is called between buildGraph and optimizeGraph/clearGraph
@@ -1229,17 +1260,26 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<teb_msgs::msg::TrajectoryP
 
 
 bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic* costmap_model, const std::vector<geometry_msgs::msg::Point>& footprint_spec,
-                                             double inscribed_radius, double circumscribed_radius, int look_ahead_idx)
+                                             double inscribed_radius, double circumscribed_radius, int look_ahead_idx, double feasibility_check_lookahead_distance)
 {
   if (look_ahead_idx < 0 || look_ahead_idx >= teb().sizePoses())
     look_ahead_idx = teb().sizePoses() - 1;
 
-  geometry_msgs::msg::Pose2D pose2d;
+  if (feasibility_check_lookahead_distance > 0){
+    for (int i=1; i < teb().sizePoses(); ++i){
+      double pose_distance=std::hypot(teb().Pose(i).x()-teb().Pose(0).x(), teb().Pose(i).y()-teb().Pose(0).y());
+      if(pose_distance > feasibility_check_lookahead_distance){
+        look_ahead_idx = i - 1;
+        break;
+      }
+    }
+  }
 
+  geometry_msgs::msg::Pose2D pose2d;
   for (int i=0; i <= look_ahead_idx; ++i)
   {
     teb().Pose(i).toPoseMsg(pose2d);
-    if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 ) {
+    if (!isPoseValid(pose2d, costmap_model, footprint_spec)){
       if (visualization_)
       {
         visualization_->publishInfeasibleRobotPose(teb().Pose(i), *robot_model_);
@@ -1266,9 +1306,8 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
                                                            delta_rot / (n_additional_samples + 1.0));
           intermediate_pose.toPoseMsg(pose2d);
 
-          if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 )
-          {
-            if (visualization_) 
+          if (!isPoseValid(pose2d, costmap_model, footprint_spec)){
+            if (visualization_)
             {
               visualization_->publishInfeasibleRobotPose(intermediate_pose, *robot_model_);
             }
@@ -1277,6 +1316,19 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
         }
       }
     }
+  }
+  return true;
+}
+
+bool TebOptimalPlanner::isPoseValid(geometry_msgs::msg::Pose2D pose2d, dwb_critics::ObstacleFootprintCritic* costmap_model,
+                           const std::vector<geometry_msgs::msg::Point>& footprint_spec)
+{
+  try {
+    if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 ) {
+      return false;
+    }
+  } catch (...) {
+    return false;
   }
   return true;
 }
