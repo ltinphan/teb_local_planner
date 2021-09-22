@@ -86,7 +86,10 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "use_proportional_saturation",  rclcpp::ParameterValue(robot.use_proportional_saturation));
 
   // GoalTolerance
-   declare_parameter_if_not_declared(nh, name + "." + "free_goal_vel", rclcpp::ParameterValue(goal_tolerance.free_goal_vel));
+  declare_parameter_if_not_declared(nh, name + "." + "xy_goal_tolerance", rclcpp::ParameterValue(goal_tolerance.xy_goal_tolerance));
+  declare_parameter_if_not_declared(nh, name + "." + "yaw_goal_tolerance", rclcpp::ParameterValue(goal_tolerance.yaw_goal_tolerance));
+  declare_parameter_if_not_declared(nh, name + "." + "free_goal_vel", rclcpp::ParameterValue(goal_tolerance.free_goal_vel));
+  declare_parameter_if_not_declared(nh, name + "." + "complete_global_plan", rclcpp::ParameterValue(goal_tolerance.complete_global_plan));
 
   // Obstacles
   declare_parameter_if_not_declared(nh, name + "." + "min_obstacle_dist", rclcpp::ParameterValue(obstacles.min_obstacle_dist));
