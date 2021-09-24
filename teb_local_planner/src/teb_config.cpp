@@ -50,6 +50,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "map_frame", rclcpp::ParameterValue(map_frame));
   declare_parameter_if_not_declared(nh, name + "." + "." + "custom_obst_topic", rclcpp::ParameterValue(custom_obst_topic));
   declare_parameter_if_not_declared(nh, name + "." + "." + "custom_narrow_obst_topic", rclcpp::ParameterValue(custom_narrow_obst_topic));
+  declare_parameter_if_not_declared(nh, name + "." + "." + "custom_static_obst_topic", rclcpp::ParameterValue(custom_static_obst_topic));
 
   // Trajectory
   declare_parameter_if_not_declared(nh, name + "." + "teb_autosize", rclcpp::ParameterValue(trajectory.teb_autosize));
@@ -176,8 +177,9 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
 {
   nh->get_parameter_or(name + "." + "odom_topic", odom_topic, odom_topic);
-  nh->get_parameter_or(name + "." + "custom_narrow_obst_topic", custom_narrow_obst_topic, custom_narrow_obst_topic);
   nh->get_parameter_or(name + "." + "custom_obst_topic", custom_obst_topic, custom_obst_topic);
+  nh->get_parameter_or(name + "." + "custom_narrow_obst_topic", custom_narrow_obst_topic, custom_narrow_obst_topic);
+  nh->get_parameter_or(name + "." + "custom_static_obst_topic", custom_fill_grade_obst_topic, custom_fill_grade_obst_topic);
   nh->get_parameter_or(name + "." + "map_frame", map_frame, map_frame);
   
   // Trajectory

@@ -64,7 +64,8 @@ public:
   
   std::string odom_topic; //!< Topic name of the odometry message, provided by the robot driver or simulator
   std::string custom_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
-  std::string custom_narrow_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
+  std::string custom_narrow_obst_topic; //!< Topic name of the custom narrow obstacles message,  obstacles are provided by the AdjustPalletGoal Action Server
+  std::string custom_fill_grade_obst_topic; //!< Topic name of the custom fill grade obstacles message, obstacles are provided by the camera server
   std::string map_frame; //!< Global planning frame
   std::string node_name; //!< node name used for parameter event callback
 
@@ -252,6 +253,7 @@ public:
     odom_topic = "odom";
     custom_obst_topic = "obstacles";
     custom_narrow_obst_topic = "narrow_obstacles";
+    custom_fill_grade_obst_topic = "fill_grade_obstacles";
     map_frame = "odom";
 
     // Trajectory
