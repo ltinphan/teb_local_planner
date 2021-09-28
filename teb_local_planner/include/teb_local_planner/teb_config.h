@@ -245,8 +245,8 @@ public:
 
     odom_topic = "odom";
     custom_obst_topic = "obstacles";
-    custom_narrow_obst_topic = "narrow_obstacles";
-    custom_static_obst_topic = "static_obstacles";
+    custom_narrow_obst_topic = "";
+    custom_static_obst_topic = "";
     map_frame = "odom";
 
     // Trajectory
