@@ -255,10 +255,19 @@ protected:
 
 
     /**
-     * @brief Callback for custom obstacles that are not obtained from the costmap
+     * @brief Callback for custom narrow aisle obstacles that are not obtained from the costmap.
+     * Adjust Pallet Goal Action server provides this obstacles
      * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
      */
     void customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
+
+
+    /**
+     * @brief Callback for custom obstacles that are not obtained from the costmap
+     * Camera server provides this obstacles
+     * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
+     */
+    void customStaticObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
   
    /**
     * @brief Callback for custom via-points
@@ -397,12 +406,16 @@ private:
 
   //std::shared_ptr< dynamic_reconfigure::Server<TebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
   rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
-  rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_narrow_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
+  rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_narrow_obst_sub_; //!< Subscriber for custom narrow obstacles received via a ObstacleMsg.
+  rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_static_obst_sub_; //!< Subscriber for custom fill grade obstacles received via a ObstacleMsg.
   std::mutex custom_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   std::mutex custom_narrow_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
+  std::mutex custom_static_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   costmap_converter_msgs::msg::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message
 
   costmap_converter_msgs::msg::ObstacleArrayMsg custom_narrow_obstacle_msg_; //!< Copy of the most recent obstacle message
+
+  costmap_converter_msgs::msg::ObstacleArrayMsg custom_static_obstacle_msg_; //!< Copy of the most recent obstacle message
 
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr via_points_sub_; //!< Subscriber for custom via-points received via a Path msg.
   bool custom_via_points_active_; //!< Keep track whether valid via-points have been received from via_points_sub_
