@@ -187,7 +187,7 @@ void TebLocalPlannerROS::initialize()
               rclcpp::SystemDefaultsQoS(),
               std::bind(&TebLocalPlannerROS::customNarrowObstacleCB, this, std::placeholders::_1));
 
-    // setup callback for custom fill grade obstacles
+    // setup callback for custom static obstacles
       custom_static_obst_sub_ = nh_->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
               cfg_->custom_static_obst_topic,
               rclcpp::SystemDefaultsQoS(),
