@@ -254,7 +254,7 @@ protected:
      * Camera server provides this obstacles
      * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
      */
-    void customFillGradeObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
+    void customStaticObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
   
    /**
     * @brief Callback for custom via-points
