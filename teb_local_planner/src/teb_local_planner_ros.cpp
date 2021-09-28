@@ -191,7 +191,7 @@ void TebLocalPlannerROS::initialize()
       custom_static_obst_sub_ = nh_->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
               cfg_->custom_static_obst_topic,
               rclcpp::SystemDefaultsQoS(),
-              std::bind(&TebLocalPlannerROS::customFillGradeObstacleCB, this, std::placeholders::_1));
+              std::bind(&TebLocalPlannerROS::customStaticObstacleCB, this, std::placeholders::_1));
 
     // setup callback for custom via-points
     via_points_sub_ = nh_->create_subscription<nav_msgs::msg::Path>(
@@ -1238,7 +1238,7 @@ void TebLocalPlannerROS::customNarrowObstacleCB(const costmap_converter_msgs::ms
     custom_narrow_obstacle_msg_ = *obst_msg;
 }
 
-void TebLocalPlannerROS::customFillGradeObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
+void TebLocalPlannerROS::customStaticObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
 {
     std::lock_guard<std::mutex> l3(custom_static_obst_mutex_);
     custom_static_obstacle_msg_ = *obst_msg;
