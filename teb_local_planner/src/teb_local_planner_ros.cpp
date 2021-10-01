@@ -367,12 +367,14 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     // TODO: 5 seconds?
     if (seconds_diff > 5){
       RCLCPP_INFO(logger_, "Diff %f", seconds_diff);
+      RCLCPP_ERROR(logger_, "No new obstacles were received for the past 5 seconds");
       cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
       last_cmd_ = cmd_vel.twist;
       return cmd_vel;
     }
   }
   else{
+    RCLCPP_ERROR(logger_, "No obstacles were received");
     cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
     last_cmd_ = cmd_vel.twist;
     return cmd_vel;
