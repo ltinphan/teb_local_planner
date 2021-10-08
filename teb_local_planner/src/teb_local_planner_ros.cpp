@@ -666,7 +666,15 @@ void TebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
                   polyobst->pushBackVertex((obstacle_to_map_eig * pos).head(2));
               }
               polyobst->finalizePolygon();
-              obstacles_.push_back(ObstaclePtr(polyobst));
+              if (!(custom_obstacle_msg_.obstacles.at(i).id==std::stoi(std::string(nh_->get_namespace()).substr(4,-1))))
+              {
+                obstacles_.push_back(ObstaclePtr(polyobst));
+              }
+              else
+              {
+                RCLCPP_INFO_ONCE(nh_->get_logger(), "Obstacle whose ID matches robot's found. It will be ignored. This message is only printed once");
+              }
+
           }
           if(!obstacles_.empty())
               obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
