@@ -1256,8 +1256,8 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
       double delta_rot = g2o::normalize_theta(g2o::normalize_theta(teb().Pose(i+1).theta()) -
                                               g2o::normalize_theta(teb().Pose(i).theta()));
       Eigen::Vector2d delta_dist = teb().Pose(i+1).position()-teb().Pose(i).position();
-      RCLCPP_DEBUG(node_->get_logger(), "Check feas with \n %.2f  < %.2f",cfg_->trajectory.min_resolution_collision_check_angular, delta_rot);
-      RCLCPP_DEBUG(node_->get_logger(), "Check feas with \n %.2f > %.2f",cfg_->delta_dist.norm() , inscribed_radius);
+      RCLCPP_INFO(node_->get_logger(), "Check feas with \n %.2f  < %.2f",cfg_->trajectory.min_resolution_collision_check_angular, delta_rot);
+      RCLCPP_INFO(node_->get_logger(), "Check feas with \n %.2f > %.2f",cfg_->delta_dist.norm() , inscribed_radius);
       if(fabs(delta_rot) > cfg_->trajectory.min_resolution_collision_check_angular || delta_dist.norm() > inscribed_radius)
       {
         int n_additional_samples = std::max(std::ceil(fabs(delta_rot) / cfg_->trajectory.min_resolution_collision_check_angular), 
@@ -1288,7 +1288,7 @@ bool TebOptimalPlanner::isPoseValid(geometry_msgs::msg::Pose2D pose2d, dwb_criti
                            const std::vector<geometry_msgs::msg::Point>& footprint_spec)
 {
   try {
-    RCLCPP_DEBUG(node_->get_logger(), "Costmap Mod out \n %.2f", costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)));
+    RCLCPP_INFO(node_->get_logger(), "Costmap Mod out \n %.2f", costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)));
     if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 ) {
       return false;
     }
