@@ -1257,7 +1257,7 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
                                               g2o::normalize_theta(teb().Pose(i).theta()));
       Eigen::Vector2d delta_dist = teb().Pose(i+1).position()-teb().Pose(i).position();
       RCLCPP_INFO(node_->get_logger(), "Check feas with \n %.2f  < %.2f",cfg_->trajectory.min_resolution_collision_check_angular, delta_rot);
-      RCLCPP_INFO(node_->get_logger(), "Check feas with \n %.2f > %.2f",cfg_->delta_dist.norm() , inscribed_radius);
+      RCLCPP_INFO(node_->get_logger(), "Check feas with \n %.2f > %.2f", delta_dist.norm() , inscribed_radius);
       if(fabs(delta_rot) > cfg_->trajectory.min_resolution_collision_check_angular || delta_dist.norm() > inscribed_radius)
       {
         int n_additional_samples = std::max(std::ceil(fabs(delta_rot) / cfg_->trajectory.min_resolution_collision_check_angular), 
