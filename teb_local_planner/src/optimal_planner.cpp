@@ -106,8 +106,6 @@ void TebOptimalPlanner::initialize(nav2_util::LifecycleNode::SharedPtr node, con
   vel_goal_.second.linear.y = 0;
   vel_goal_.second.angular.z = 0;
   initialized_ = true;
-
-  setVisualization(visual);
 }
 
 
@@ -1241,7 +1239,7 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
   for (int i=0; i <= look_ahead_idx; ++i)
   {
     teb().Pose(i).toPoseMsg(pose2d);
-    if (!isPoseValid(pose2d, costmap_model, footprint_spec)){
+    if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 ) {
       if (visualization_)
       {
         visualization_->publishInfeasibleRobotPose(teb().Pose(i), *robot_model_);
@@ -1268,7 +1266,8 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
                                                            delta_rot / (n_additional_samples + 1.0));
           intermediate_pose.toPoseMsg(pose2d);
 
-          if (!isPoseValid(pose2d, costmap_model, footprint_spec)){
+          if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) < 0 )
+          {
             if (visualization_)
             {
               visualization_->publishInfeasibleRobotPose(intermediate_pose, *robot_model_);
