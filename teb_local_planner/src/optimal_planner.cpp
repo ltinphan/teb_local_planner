@@ -1285,7 +1285,6 @@ bool TebOptimalPlanner::isPoseValid(geometry_msgs::msg::Pose2D pose2d, dwb_criti
                            const std::vector<geometry_msgs::msg::Point>& footprint_spec)
 {
   try {
-    RCLCPP_INFO(node_->get_logger(), "CostmapScore: %.2f", costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)));
     if ( costmap_model->scorePose(pose2d, dwb_critics::getOrientedFootprint(pose2d, footprint_spec)) > 0 ) {
       return false;
     }
