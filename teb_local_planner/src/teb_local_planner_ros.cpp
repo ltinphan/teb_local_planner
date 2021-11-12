@@ -513,9 +513,9 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     time_last_published_global_plan_ = nh_->now().seconds();
   }
   if (no_infeasible_slowdown_plans_ > 0){
-    cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (no_infeasible_slowdown_plans_ + 1.0)
-    cmd_vel.twist.linear.y = cmd_vel.twist.linear.y / (no_infeasible_slowdown_plans_ + 1.0)
-    cmd_vel.twist.angular.z = cmd_vel.twist.angular.z / (no_infeasible_slowdown_plans_ + 1.0)
+    cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (no_infeasible_slowdown_plans_ + 1.0);
+    cmd_vel.twist.linear.y = cmd_vel.twist.linear.y / (no_infeasible_slowdown_plans_ + 1.0);
+    cmd_vel.twist.angular.z = cmd_vel.twist.angular.z / (no_infeasible_slowdown_plans_ + 1.0);
   }
   return cmd_vel;
 }
