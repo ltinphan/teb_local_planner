@@ -68,7 +68,7 @@ namespace teb_local_planner
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : nh_(nullptr), costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
                                            costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
-                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0), time_last_published_global_plan_(0),
+                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0), time_last_published_global_plan_(0),  no_infeasible_slowdown_plans_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
@@ -446,10 +446,15 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     ++no_infeasible_plans_; // increase number of infeasible solutions in a row
     time_last_infeasible_plan_ = nh_->now();
     last_cmd_ = cmd_vel.twist;
-
-    throw nav2_core::PlannerException(
-      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-    );
+    no_infeasible_slowdown_plans_++;
+    if (no_infeasible_slowdown_plans_ > 4){
+        throw nav2_core::PlannerException(
+          std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+        );
+    }
+  }
+  else{
+    no_infeasible_slowdown_plans_ = 0;
   }
 
   // Get the velocity command for this sampling interval
@@ -504,6 +509,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   if (time_last_published_global_plan_ + 1.0 / cfg_->performance.global_plan_publish_freq < nh_->now().seconds()){
     visualization_->publishGlobalPlan(global_plan_);
     time_last_published_global_plan_ = nh_->now().seconds();
+  }
+  if (no_infeasible_slowdown_plans_ > 0){
+    cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (no_infeasible_slowdown_plans_ + 1.0)
+    cmd_vel.twist.linear.y = cmd_vel.twist.linear.y / (no_infeasible_slowdown_plans_ + 1.0)
+    cmd_vel.twist.angular.z = cmd_vel.twist.angular.z / (no_infeasible_slowdown_plans_ + 1.0)
   }
   return cmd_vel;
 }
