@@ -461,8 +461,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
 
   if (no_infeasible_slowdown_plans_ > 0){
     cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (no_infeasible_slowdown_plans_ + 1.0);
-    cmd_vel.twist.linear.y = cmd_vel.twist.linear.y / (no_infeasible_slowdown_plans_ + 1.0);
-    cmd_vel.twist.angular.z = cmd_vel.twist.angular.z / (no_infeasible_slowdown_plans_ + 1.0);
   }
 
   // Get the velocity command for this sampling interval
