@@ -64,6 +64,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   nh->declare_parameter(name + "." + "force_reinit_new_goal_dist", rclcpp::ParameterValue(trajectory.force_reinit_new_goal_dist));
   nh->declare_parameter(name + "." + "force_reinit_new_goal_angular", rclcpp::ParameterValue(trajectory.force_reinit_new_goal_angular));
   nh->declare_parameter(name + "." + "feasibility_check_no_poses", rclcpp::ParameterValue(trajectory.feasibility_check_no_poses));
+  nh->declare_parameter(name + "." + "feasibility_check_slowdown_poses", rclcpp::ParameterValue(trajectory.feasibility_check_slowdown_poses));
   nh->declare_parameter(name + "." + "feasibility_check", rclcpp::ParameterValue(trajectory.feasibility_check));
   nh->declare_parameter(name + "." + "publish_feedback", rclcpp::ParameterValue(trajectory.publish_feedback));
   nh->declare_parameter(name + "." + "min_resolution_collision_check_angular", rclcpp::ParameterValue(trajectory.min_resolution_collision_check_angular));
@@ -198,6 +199,7 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   nh->get_parameter_or(name + "." + "force_reinit_new_goal_dist", trajectory.force_reinit_new_goal_dist, trajectory.force_reinit_new_goal_dist);
   nh->get_parameter_or(name + "." + "force_reinit_new_goal_angular", trajectory.force_reinit_new_goal_angular, trajectory.force_reinit_new_goal_angular);
   nh->get_parameter_or(name + "." + "feasibility_check_no_poses", trajectory.feasibility_check_no_poses, trajectory.feasibility_check_no_poses);
+  nh->get_parameter_or(name + "." + "feasibility_check_slowdown_poses", trajectory.feasibility_check_slowdown_poses, trajectory.feasibility_check_slowdown_poses);
   nh->get_parameter_or(name + "." + "feasibility_check", trajectory.feasibility_check, trajectory.feasibility_check);
   nh->get_parameter_or(name + "." + "publish_feedback", trajectory.publish_feedback, trajectory.publish_feedback);
   nh->get_parameter_or(name + "." + "min_resolution_collision_check_angular", trajectory.min_resolution_collision_check_angular, trajectory.min_resolution_collision_check_angular);

@@ -449,7 +449,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     no_infeasible_slowdown_plans_++;
     RCLCPP_INFO(nh_->get_logger(), "Nr. infeasible slowdown: %d", no_infeasible_slowdown_plans_);
 
-    if (no_infeasible_slowdown_plans_ > 4){
+    if (no_infeasible_slowdown_plans_ >  cfg_->trajectory.feasibility_check_slowdown_poses){
         throw nav2_core::PlannerException(
           std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
         );
