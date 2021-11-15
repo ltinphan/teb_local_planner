@@ -459,6 +459,12 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     no_infeasible_slowdown_plans_ = 0;
   }
 
+  if (no_infeasible_slowdown_plans_ > 0){
+    cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (no_infeasible_slowdown_plans_ + 1.0);
+    cmd_vel.twist.linear.y = cmd_vel.twist.linear.y / (no_infeasible_slowdown_plans_ + 1.0);
+    cmd_vel.twist.angular.z = cmd_vel.twist.angular.z / (no_infeasible_slowdown_plans_ + 1.0);
+  }
+
   // Get the velocity command for this sampling interval
   if (!planner_->getVelocityCommand(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->trajectory.control_look_ahead_poses))
   {
@@ -512,11 +518,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     visualization_->publishGlobalPlan(global_plan_);
     time_last_published_global_plan_ = nh_->now().seconds();
   }
-  if (no_infeasible_slowdown_plans_ > 0){
-    cmd_vel.twist.linear.x = cmd_vel.twist.linear.x / (no_infeasible_slowdown_plans_ + 1.0);
-    cmd_vel.twist.linear.y = cmd_vel.twist.linear.y / (no_infeasible_slowdown_plans_ + 1.0);
-    cmd_vel.twist.angular.z = cmd_vel.twist.angular.z / (no_infeasible_slowdown_plans_ + 1.0);
-  }
+
   return cmd_vel;
 }
 
