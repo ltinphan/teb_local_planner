@@ -1245,7 +1245,7 @@ int TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic
       {
         visualization_->publishInfeasibleRobotPose(teb().Pose(i), *robot_model_);
       }
-      RCLCPP_INFO(nh_->get_logger(), "Here.. %d", i);
+      RCLCPP_INFO(node_->get_logger(), "Here.. %d", i);
 
       return i;
     }
@@ -1274,7 +1274,7 @@ int TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic
             {
               visualization_->publishInfeasibleRobotPose(intermediate_pose, *robot_model_);
             }
-            RCLCPP_INFO(nh_->get_logger(), "Or Here.. %d", i);
+            RCLCPP_INFO(node_->get_logger(), "Or Here.. %d", i);
 
             return i;
           }
