@@ -426,7 +426,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
       std::string("teb_local_planner was not able to obtain a local plan for the current setting.")
     );
   }
-  double max_velocity_x = cfg_->robot.max_vel_x
+  double max_velocity_x = cfg_->robot.max_vel_x;
   // Check feasibility (but within the first few states only)
   if(cfg_->robot.is_footprint_dynamic)
   {
@@ -434,7 +434,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     footprint_spec_ = costmap_ros_->getRobotFootprint();
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
-  int unfeasible_pose = -1
+  int unfeasible_pose = -1;
   if (cfg_->trajectory.feasibility_check){
     unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
     if (!(unfeasible_pose > -1))
@@ -446,14 +446,14 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
         planner_->clearPlanner();
 
         ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-        time_last_infeasible_plan_ = clock_->now();
+        time_last_infeasible_plan_ = clock->now();
         last_cmd_ = cmd_vel.twist;
         throw nav2_core::PlannerException(
               std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
             );
       }
       else if (unfeasible_pose < cfg_->trajectory.feasibility_check_slowdown_poses){
-        max_velocity_x = max_velocity_x / (cfg_->trajectory.feasibility_check_slowdown_poses - unfeasible_pose)
+        max_velocity_x = max_velocity_x / (cfg_->trajectory.feasibility_check_slowdown_poses - unfeasible_pose);
       }
     }
     else if (unfeasible_pose == -2) {
@@ -1200,13 +1200,13 @@ void TebLocalPlannerROS::configureBackupModes(std::vector<geometry_msgs::msg::Po
     if (cfg_->recovery.oscillation_recovery)
     {
         double max_vel_theta;
-        double max_vel_current = last_cmd_.linear.x >= 0 ? max_velocity_x : cfg_->robot.max_vel_x_backwards;
+        double max_vel_current = last_cmd_.linear.x >= 0 ? cfg_->robot.max_vel_x : cfg_->robot.max_vel_x_backwards;
         if (cfg_->robot.min_turning_radius!=0 && max_vel_current>0)
             max_vel_theta = std::max( max_vel_current/std::abs(cfg_->robot.min_turning_radius),  cfg_->robot.max_vel_theta );
         else
             max_vel_theta = cfg_->robot.max_vel_theta;
         
-        failure_detector_.update(last_cmd_, max_velocity_x, cfg_->robot.max_vel_x_backwards, max_vel_theta,
+        failure_detector_.update(last_cmd_, cfg_->robot.max_vel_x, cfg_->robot.max_vel_x_backwards, max_vel_theta,
                                cfg_->recovery.oscillation_v_eps, cfg_->recovery.oscillation_omega_eps);
         
         bool oscillating = failure_detector_.isOscillating();
