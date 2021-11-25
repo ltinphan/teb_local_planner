@@ -1245,7 +1245,7 @@ int TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic
       {
         visualization_->publishInfeasibleRobotPose(teb().Pose(i), *robot_model_);
       }
-      return -2;
+      return i;
     }
     // Checks if the distance between two poses is higher than the robot radius or the orientation diff is bigger than the specified threshold
     // and interpolates in that case.

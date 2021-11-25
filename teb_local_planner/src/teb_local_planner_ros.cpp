@@ -437,9 +437,10 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   int unfeasible_pose = -1;
   if (cfg_->trajectory.feasibility_check){
     unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-    if (!(unfeasible_pose > -1))
+    if (unfeasible_pose > -1)
     {
-      if (unfeasible_pose < cfg_->trajectory.feasibility_check_stop_poses){
+        RCLCPP_INFO(nh_->get_logger(), "Unfesible pose is %d", unfeasible_pose)
+      if (unfeasible_pose <= cfg_->trajectory.feasibility_check_stop_poses){
         cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
         // now we reset everything to start again with the initialization of new trajectories.
@@ -452,14 +453,9 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
               std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
             );
       }
-      else if (unfeasible_pose < cfg_->trajectory.feasibility_check_slowdown_poses){
-        max_velocity_x = max_velocity_x / (cfg_->trajectory.feasibility_check_slowdown_poses - unfeasible_pose);
+      else if (unfeasible_pose <= cfg_->trajectory.feasibility_check_slowdown_poses){
+        max_velocity_x = max_velocity_x * (unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (cfg_->trajectory.feasibility_check_slowdown_poses -  cfg_->trajectory.feasibility_check_stop_poses);
       }
-    }
-    else if (unfeasible_pose == -2) {
-        throw nav2_core::PlannerException(
-              std::string("TebLocalPlannerROS: Pose not valid during feasibility check!")
-            );
     }
   }
 
