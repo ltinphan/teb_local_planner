@@ -434,9 +434,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     footprint_spec_ = costmap_ros_->getRobotFootprint();
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
-  int unfeasible_pose = -1;
+  int unfeasible_pose = -2;
   if (cfg_->trajectory.feasibility_check){
     unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
+    RCLCPP_INFO(nh_->get_logger(), "Unfesible pose is %d", unfeasible_pose);
+
     if (unfeasible_pose > -1)
     {
         RCLCPP_INFO(nh_->get_logger(), "Unfesible pose is %d", unfeasible_pose);
