@@ -641,7 +641,7 @@ int HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCri
     if (!best)
     {
       RCLCPP_ERROR(rclcpp::get_logger("teb_local_planner"), "Couldn't retrieve the best plan");
-      return false;
+      return 0;
     }
     feasible = best->isTrajectoryFeasible(costmap_model, footprint_spec, inscribed_radius, circumscribed_radius, look_ahead_idx);
     if(!feasible)
