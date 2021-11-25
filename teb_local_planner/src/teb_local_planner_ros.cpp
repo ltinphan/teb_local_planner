@@ -457,7 +457,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
             );
       }
       else if (unfeasible_pose <= cfg_->trajectory.feasibility_check_slowdown_poses){
-        max_velocity_x = max_velocity_x * (unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (cfg_->trajectory.feasibility_check_slowdown_poses -  cfg_->trajectory.feasibility_check_stop_poses);
+        max_velocity_x = max_velocity_x * (float)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (float)(cfg_->trajectory.feasibility_check_slowdown_poses -  cfg_->trajectory.feasibility_check_stop_poses);
+      RCLCPP_INFO(nh_->get_logger(), "max vel pose is %f", max_velocity_x);
       }
     }
   }
