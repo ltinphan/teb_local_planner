@@ -634,7 +634,7 @@ int HomotopyClassPlanner::bestTebIdx() const
 int HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic* costmap_model, const std::vector<geometry_msgs::msg::Point>& footprint_spec,
                                                 double inscribed_radius, double circumscribed_radius, int look_ahead_idx)
 {
-  bool feasible = false;
+  int feasible = -1;
   while(rclcpp::ok() && !feasible && tebs_.size() > 0)
   {
     TebOptimalPlannerPtr best = findBestTeb();
