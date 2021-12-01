@@ -388,29 +388,44 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
 
+  bool set_zero_speed = false;
   if (!custom_obstacle_msg_.obstacles.empty() || !custom_narrow_obstacle_msg_.obstacles.empty() || !custom_static_obstacle_msg_.obstacles.empty()){
-    float obst_seconds_diff = nh_->now().seconds() - custom_obstacle_msg_.obstacles.at(0).header.stamp.sec;
-    float narrow_obst_seconds_diff = nh_->now().seconds() - custom_narrow_obstacle_msg_.obstacles.at(0).header.stamp.sec;
-    float static_obst_seconds_diff = nh_->now().seconds() - custom_static_obstacle_msg_.obstacles.at(0).header.stamp.sec;
-
-    // TODO: 5 seconds?
-    if (obst_seconds_diff > 5 && narrow_obst_seconds_diff > 5 && static_obst_seconds_diff > 5){
-      RCLCPP_INFO(nh_->get_logger(), "No new custom obstacles received for %fs", obst_seconds_diff);
-      RCLCPP_INFO(nh_->get_logger(), "No new custom narrow obstacles received for %fs", narrow_obst_seconds_diff);
-      RCLCPP_INFO(nh_->get_logger(), "No custom static obstacles received for %fs", static_obst_seconds_diff);
-      RCLCPP_ERROR(nh_->get_logger(), "No new obstacles were received for the past 5 seconds");
-      cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-      last_cmd_ = cmd_vel.twist;
-      return cmd_vel;
+    if (!custom_obstacle_msg_.obstacles.empty()){
+      float obst_seconds_diff = nh_->now().seconds() - custom_obstacle_msg_.obstacles.at(0).header.stamp.sec;
+      // TODO: 5 seconds?
+      if (obst_seconds_diff > 5){
+        RCLCPP_INFO(nh_->get_logger(), "No new custom obstacles received for %fs", obst_seconds_diff);
+        RCLCPP_ERROR(nh_->get_logger(), "No new obstacles were received for the past 5 seconds");
+        set_zero_speed = true;
+      }
+    }
+    if (!custom_narrow_obstacle_msg_.obstacles.empty()){
+      float narrow_obst_seconds_diff = nh_->now().seconds() - custom_narrow_obstacle_msg_.obstacles.at(0).header.stamp.sec;
+      if (narrow_obst_seconds_diff > 5){
+        RCLCPP_INFO(nh_->get_logger(), "No new custom narrow obstacles received for %fs", narrow_obst_seconds_diff);
+        RCLCPP_ERROR(nh_->get_logger(), "No new obstacles were received for the past 5 seconds");
+        set_zero_speed = true;
+      }
+    }
+    if (!custom_static_obstacle_msg_.obstacles.empty()){
+      float static_obst_seconds_diff = nh_->now().seconds() - custom_static_obstacle_msg_.obstacles.at(0).header.stamp.sec;
+      if (static_obst_seconds_diff > 5){
+        RCLCPP_INFO(nh_->get_logger(), "No new custom static obstacles received for %fs", static_obst_seconds_diff);
+        RCLCPP_ERROR(nh_->get_logger(), "No new obstacles were received for the past 5 seconds");
+        set_zero_speed = true;
+      }
     }
   }
   else{
     RCLCPP_ERROR(nh_->get_logger(), "No obstacles were received");
+    set_zero_speed = true;
+  }
+  if (set_zero_speed){
     cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
     last_cmd_ = cmd_vel.twist;
     return cmd_vel;
   }
-    
+
   
     
   // Do not allow config changes during the following optimization step
