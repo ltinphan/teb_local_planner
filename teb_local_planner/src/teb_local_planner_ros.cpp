@@ -388,7 +388,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
 
-  if (!custom_obstacle_msg_.obstacles.empty() || !custom_narrow_obstacle_msg_.empty() || !custom_static_obstacle_msg_.empty()){
+  if (!custom_obstacle_msg_.obstacles.empty() || !custom_narrow_obstacle_msg_.obstacles.empty() || !custom_static_obstacle_msg_.obstacles.empty()){
     float obst_seconds_diff = nh_->now().seconds() - custom_obstacle_msg_.obstacles.at(0).header.stamp.sec;
     float narrow_obst_seconds_diff = nh_->now().seconds() - custom_narrow_obstacle_msg_.obstacles.at(0).header.stamp.sec;
     float static_obst_seconds_diff = nh_->now().seconds() - custom_static_obstacle_msg_.obstacles.at(0).header.stamp.sec;
