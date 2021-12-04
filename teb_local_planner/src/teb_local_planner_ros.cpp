@@ -442,7 +442,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
 
     if (unfeasible_pose > -1)
     {
-        RCLCPP_INFO(nh_->get_logger(), "Unfesible pose is %d", unfeasible_pose);
+        RCLCPP_INFO(nh_->get_logger(), "Unfeasible pose is %d", unfeasible_pose);
       if (unfeasible_pose <= cfg_->trajectory.feasibility_check_stop_poses){
         cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
@@ -457,8 +457,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
             );
       }
       else{
-        max_velocity_x = max_velocity_x * (float)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (float)(cfg_->trajectory.feasibility_check_no_poses -  cfg_->trajectory.feasibility_check_stop_poses);
-      RCLCPP_INFO(nh_->get_logger(), "max vel pose is %f", max_velocity_x);
+        max_velocity_x = max_velocity_x * (double)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (double)(cfg_->trajectory.feasibility_check_no_poses -  cfg_->trajectory.feasibility_check_stop_poses);
       }
     }
   }
