@@ -435,14 +435,12 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
   int unfeasible_pose = -2;
-  RCLCPP_INFO(nh_->get_logger(), " pose is %d, feas check: %d", unfeasible_pose, cfg_->trajectory.feasibility_check);
   if (cfg_->trajectory.feasibility_check){
     unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-    RCLCPP_INFO(nh_->get_logger(), "Unfesible pose is %d", unfeasible_pose);
 
     if (unfeasible_pose > -1)
     {
-        RCLCPP_INFO(nh_->get_logger(), "Unfeasible pose is %d", unfeasible_pose);
+      RCLCPP_INFO(nh_->get_logger(), "Pose is unfeasible, index is %d", unfeasible_pose);
       if (unfeasible_pose <= cfg_->trajectory.feasibility_check_stop_poses){
         cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
@@ -456,7 +454,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
               std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
             );
       }
-      else{
+      else {
         max_velocity_x = max_velocity_x * (double)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (double)(cfg_->trajectory.feasibility_check_no_poses -  cfg_->trajectory.feasibility_check_stop_poses);
       }
     }
@@ -515,7 +513,6 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     visualization_->publishGlobalPlan(global_plan_);
     time_last_published_global_plan_ = nh_->now().seconds();
   }
-
   return cmd_vel;
 }
 

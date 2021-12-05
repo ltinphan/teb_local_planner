@@ -635,8 +635,7 @@ int HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCri
                                                 double inscribed_radius, double circumscribed_radius, int look_ahead_idx)
 {
   int feasible = 0;
-  //while(rclcpp::ok() && !feasible && tebs_.size() > 0)
-  //{
+
     TebOptimalPlannerPtr best = findBestTeb();
     if (!best)
     {
@@ -644,13 +643,7 @@ int HomotopyClassPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCri
       return 0;
     }
     feasible = best->isTrajectoryFeasible(costmap_model, footprint_spec, inscribed_radius, circumscribed_radius, look_ahead_idx);
-    //if(feasible >= 0)
-    //{
-    //  removeTeb(best);
-    //  if(last_best_teb_ && (last_best_teb_ == best)) // Same plan as before.
-    //    return feasible;                             // Not failing could result in oscillations between trajectories.
-    //}
-  //}
+
   return feasible;
 }
 

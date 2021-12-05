@@ -1245,8 +1245,6 @@ int TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic
       {
         visualization_->publishInfeasibleRobotPose(teb().Pose(i), *robot_model_);
       }
-      RCLCPP_INFO(node_->get_logger(), "Here.. %d", i);
-
       return i;
     }
     // Checks if the distance between two poses is higher than the robot radius or the orientation diff is bigger than the specified threshold
@@ -1274,8 +1272,6 @@ int TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCritic
             {
               visualization_->publishInfeasibleRobotPose(intermediate_pose, *robot_model_);
             }
-            RCLCPP_INFO(node_->get_logger(), "Or Here.. %d", i);
-
             return i;
           }
         }
