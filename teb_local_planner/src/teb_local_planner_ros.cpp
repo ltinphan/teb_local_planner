@@ -426,7 +426,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
       std::string("teb_local_planner was not able to obtain a local plan for the current setting.")
     );
   }
-         
+  double max_velocity_x = cfg_->robot.max_vel_x;
   // Check feasibility (but within the first few states only)
   if(cfg_->robot.is_footprint_dynamic)
   {
@@ -434,22 +434,30 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
     footprint_spec_ = costmap_ros_->getRobotFootprint();
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
+  int unfeasible_pose = -2;
+  if (cfg_->trajectory.feasibility_check){
+    unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
 
-  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
-  if (!feasible && cfg_->trajectory.feasibility_check)
-  {
-    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
+    if (unfeasible_pose > -1)
+    {
+      RCLCPP_INFO(nh_->get_logger(), "Pose is unfeasible, index is %d", unfeasible_pose);
+      if (unfeasible_pose <= cfg_->trajectory.feasibility_check_stop_poses){
+        cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
-    // now we reset everything to start again with the initialization of new trajectories.
-    planner_->clearPlanner();
+        // now we reset everything to start again with the initialization of new trajectories.
+        planner_->clearPlanner();
 
-    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-    time_last_infeasible_plan_ = nh_->now();
-    last_cmd_ = cmd_vel.twist;
-
-    throw nav2_core::PlannerException(
-      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-    );
+        ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+        time_last_infeasible_plan_ = nh_->now();
+        last_cmd_ = cmd_vel.twist;
+        throw nav2_core::PlannerException(
+              std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+            );
+      }
+      else {
+        max_velocity_x = max_velocity_x * (double)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (double)(cfg_->trajectory.feasibility_check_no_poses -  cfg_->trajectory.feasibility_check_stop_poses);
+      }
+    }
   }
 
   // Get the velocity command for this sampling interval
@@ -466,7 +474,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(
   }
 
   // Saturate velocity, if the optimization results violates the constraints (could be possible due to soft constraints).
-  saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->robot.max_vel_x, cfg_->robot.max_vel_y,
+  saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, max_velocity_x, cfg_->robot.max_vel_y,
                    cfg_->robot.max_vel_theta, cfg_->robot.max_vel_x_backwards);
 
   // convert rot-vel to steering angle if desired (carlike robot).
