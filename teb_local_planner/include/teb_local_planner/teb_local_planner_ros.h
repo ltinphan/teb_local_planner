@@ -136,9 +136,22 @@ public:
     */
   geometry_msgs::msg::TwistStamped computeVelocityCommands(
     const geometry_msgs::msg::PoseStamped &pose,
-    const geometry_msgs::msg::Twist &velocity,
-      nav2_core::GoalChecker * goal_checker);
-  
+    const geometry_msgs::msg::Twist &velocity);
+
+  bool isGoalReached(
+    const geometry_msgs::msg::PoseStamped & pose,
+    const geometry_msgs::msg::Twist & velocity) ;
+
+  /**
+    * @brief  Check if the goal pose has been achieved
+    *
+    * The actual check is performed in computeVelocityCommands().
+    * Only the status flag is checked here.
+    * @return True if achieved, false otherwise
+    */
+  bool isGoalReached();
+
+
     
   /** @name Public utility functions/methods */
   //@{
@@ -239,7 +252,23 @@ protected:
     * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
     */
   void customObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
-  
+
+
+    /**
+     * @brief Callback for custom narrow aisle obstacles that are not obtained from the costmap.
+     * Adjust Pallet Goal Action server provides this obstacles
+     * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
+     */
+    void customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
+
+
+    /**
+     * @brief Callback for custom obstacles that are not obtained from the costmap
+     * Camera server provides this obstacles
+     * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
+     */
+    void customStaticObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
+
    /**
     * @brief Callback for custom via-points
     * @param via_points_msg pointer to the message containing a list of via-points
@@ -387,8 +416,16 @@ private:
 
   //std::shared_ptr< dynamic_reconfigure::Server<TebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
   rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
+  rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_narrow_obst_sub_; //!< Subscriber for custom narrow obstacles received via a ObstacleMsg.
+  rclcpp::Subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>::SharedPtr custom_static_obst_sub_; //!< Subscriber for custom fill grade obstacles received via a ObstacleMsg.
   std::mutex custom_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
+  std::mutex custom_narrow_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
+  std::mutex custom_static_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   costmap_converter_msgs::msg::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message
+
+  costmap_converter_msgs::msg::ObstacleArrayMsg custom_narrow_obstacle_msg_; //!< Copy of the most recent obstacle message
+
+  costmap_converter_msgs::msg::ObstacleArrayMsg custom_static_obstacle_msg_; //!< Copy of the most recent obstacle message
 
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr via_points_sub_; //!< Subscriber for custom via-points received via a Path msg.
   bool custom_via_points_active_; //!< Keep track whether valid via-points have been received from via_points_sub_
@@ -397,7 +434,9 @@ private:
   PoseSE2 robot_pose_; //!< Store current robot pose
   PoseSE2 robot_goal_; //!< Store current robot goal
   geometry_msgs::msg::Twist robot_vel_; //!< Store current robot translational and angular velocity (vx, vy, omega)
+  bool goal_reached_; //!< store whether the goal is reached or not
   rclcpp::Time time_last_infeasible_plan_; //!< Store at which time stamp the last infeasible plan was detected
+  double time_last_published_global_plan_; // Last published global path timestamp in seconds
   int no_infeasible_plans_; //!< Store how many times in a row the planner failed to find a feasible plan.
   rclcpp::Time time_last_oscillation_; //!< Store at which time stamp the last oscillation was detected
   RotType last_preferred_rotdir_; //!< Store recent preferred turning direction

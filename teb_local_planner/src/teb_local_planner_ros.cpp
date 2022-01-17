@@ -70,7 +70,7 @@ namespace teb_local_planner
 TebLocalPlannerROS::TebLocalPlannerROS() 
     : costmap_ros_(nullptr), tf_(nullptr), cfg_(new TebConfig()), costmap_model_(nullptr), intra_proc_node_(nullptr),
                                            costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
-                                           custom_via_points_active_(false), no_infeasible_plans_(0),
+                                           custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0), time_last_published_global_plan_(0),
                                            last_preferred_rotdir_(RotType::none), initialized_(false)
 {
 }
@@ -172,9 +172,21 @@ void TebLocalPlannerROS::initialize(nav2_util::LifecycleNode::SharedPtr node)
         
     // setup callback for custom obstacles
     custom_obst_sub_ = node->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
-                "obstacles", 
+                cfg_->custom_obst_topic,
                 rclcpp::SystemDefaultsQoS(),
                 std::bind(&TebLocalPlannerROS::customObstacleCB, this, std::placeholders::_1));
+
+     // setup callback for custom narrow aisle obstacles
+      custom_narrow_obst_sub_ = node->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
+              cfg_->custom_narrow_obst_topic,
+              rclcpp::SystemDefaultsQoS(),
+              std::bind(&TebLocalPlannerROS::customNarrowObstacleCB, this, std::placeholders::_1));
+
+    // setup callback for custom static obstacles
+      custom_static_obst_sub_ = node->create_subscription<costmap_converter_msgs::msg::ObstacleArrayMsg>(
+              cfg_->custom_static_obst_topic,
+              rclcpp::SystemDefaultsQoS(),
+              std::bind(&TebLocalPlannerROS::customStaticObstacleCB, this, std::placeholders::_1));
 
     // setup callback for custom via-points
     via_points_sub_ = node->create_subscription<nav_msgs::msg::Path>(
@@ -246,7 +258,10 @@ void TebLocalPlannerROS::setPlan(const nav_msgs::msg::Path & orig_global_plan)
 
   // we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
   // the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.  
-            
+
+  // reset goal_reached_ flag
+  goal_reached_ = false;
+
   return;
 }
 
@@ -268,6 +283,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   cmd_vel.twist.linear.x = 0;
   cmd_vel.twist.linear.y = 0;
   cmd_vel.twist.angular.z = 0;
+  goal_reached_ = false;
 
   // Update for the current goal checker's state
   geometry_msgs::msg::Pose pose_tolerance;
@@ -305,6 +321,27 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   // update via-points container
   if (!custom_via_points_active_)
     updateViaPointsContainer(transformed_plan, cfg_->trajectory.global_plan_viapoint_sep);
+
+  // check if global goal is reached  (TODO remove and use nav2 goal checker)
+  geometry_msgs::msg::PoseStamped global_goal;
+  rclcpp::Duration transform_tolerance(0, 500 * 1000 * 1000); // 500ms
+  nav_2d_utils::transformPose(tf_, robot_pose.header.frame_id, global_plan_.back(), global_goal, transform_tolerance);
+  //tf::poseStampedMsgToTF(global_plan_.back(), global_goal);
+  //global_goal.setData( tf_plan_to_global * global_goal );
+  double dx = global_goal.pose.position.x - robot_pose_.x();
+  double dy = global_goal.pose.position.y - robot_pose_.y();
+  double delta_orient = g2o::normalize_theta( tf2::getYaw(global_goal.pose.orientation) - robot_pose_.theta() );
+  if(fabs(std::sqrt(dx*dx+dy*dy)) < cfg_->goal_tolerance.xy_goal_tolerance
+    && fabs(delta_orient) < cfg_->goal_tolerance.yaw_goal_tolerance
+    && (!cfg_->goal_tolerance.complete_global_plan || via_points_.size() == 0))
+  {
+    goal_reached_ = true;
+    if (cfg_->goal_tolerance.free_goal_vel) {
+        cmd_vel.twist = last_cmd_;
+    }
+    return cmd_vel;
+  }
+
 
   // check if we should enter any backup mode and apply settings
   configureBackupModes(transformed_plan, goal_idx);
@@ -354,7 +391,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
-  
+
     
   // Do not allow config changes during the following optimization step
   std::lock_guard<std::mutex> cfg_lock(cfg_->configMutex());
@@ -391,7 +428,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
       std::string("TebLocalPlannerROS: velocity command invalid (hasDiverged). Resetting planner...")
     );
   }
-         
+
+  double max_velocity_x = cfg_->robot.max_vel_x;
   // Check feasibility (but within the first few states only)
   if(cfg_->robot.is_footprint_dynamic)
   {
@@ -399,22 +437,30 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     footprint_spec_ = costmap_ros_->getRobotFootprint();
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
+  int unfeasible_pose = -2;
+  if (cfg_->trajectory.feasibility_check){
+    unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
 
-  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses, cfg_->trajectory.feasibility_check_lookahead_distance);
-  if (!feasible)
-  {
-    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-   
-    // now we reset everything to start again with the initialization of new trajectories.
-    planner_->clearPlanner();
+    if (unfeasible_pose > -1)
+    {
+      RCLCPP_INFO(nh_->get_logger(), "Pose is unfeasible, index is %d", unfeasible_pose);
+      if (unfeasible_pose <= cfg_->trajectory.feasibility_check_stop_poses){
+        cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
 
-    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-    time_last_infeasible_plan_ = clock_->now();
-    last_cmd_ = cmd_vel.twist;
-    
-    throw nav2_core::PlannerException(
-      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-    );
+        // now we reset everything to start again with the initialization of new trajectories.
+        planner_->clearPlanner();
+
+        ++no_infeasible_plans_; // increase number of infeasible solutions in a row
+        time_last_infeasible_plan_ = nh_->now();
+        last_cmd_ = cmd_vel.twist;
+        throw nav2_core::PlannerException(
+              std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
+            );
+      }
+      else {
+        max_velocity_x = max_velocity_x * (double)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (double)(cfg_->trajectory.feasibility_check_no_poses -  cfg_->trajectory.feasibility_check_stop_poses);
+      }
+    }
   }
 
   // Get the velocity command for this sampling interval
@@ -431,7 +477,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   }
   
   // Saturate velocity, if the optimization results violates the constraints (could be possible due to soft constraints).
-  saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->robot.max_vel_x, cfg_->robot.max_vel_y,
+  saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, max_velocity_x, cfg_->robot.max_vel_y,
                    cfg_->robot.max_vel_theta, cfg_->robot.max_vel_x_backwards);
 
   // convert rot-vel to steering angle if desired (carlike robot).
@@ -465,9 +511,29 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   planner_->visualize();
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
-  visualization_->publishGlobalPlan(global_plan_);
-  
+  // .seconds() return floating point seconds, so this function can be used for intervals under 1 second
+  if (time_last_published_global_plan_ + 1.0 / cfg_->performance.global_plan_publish_freq < nh_->now().seconds()){
+    visualization_->publishGlobalPlan(global_plan_);
+    time_last_published_global_plan_ = nh_->now().seconds();
+  }
   return cmd_vel;
+}
+
+bool TebLocalPlannerROS::isGoalReached(
+  const geometry_msgs::msg::PoseStamped &,
+  const geometry_msgs::msg::Twist &) {
+  return isGoalReached();
+}
+
+bool TebLocalPlannerROS::isGoalReached()
+{
+  if (goal_reached_)
+  {
+    RCLCPP_INFO(nh_->get_logger(), "GOAL Reached!");
+    planner_->clearPlanner();
+    return true;
+  }
+  return false;
 }
 
 void TebLocalPlannerROS::updateObstacleContainerWithCostmap()
@@ -551,77 +617,205 @@ void TebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
   // Add custom obstacles obtained via message
   std::lock_guard<std::mutex> l(custom_obst_mutex_);
 
-  if (!custom_obstacle_msg_.obstacles.empty())
-  {
-    // We only use the global header to specify the obstacle coordinate system instead of individual ones
-    Eigen::Affine3d obstacle_to_map_eig;
-    try 
-    {
-      geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
+  std::lock_guard<std::mutex> l2(custom_narrow_obst_mutex_);
+
+  std::lock_guard<std::mutex> l3(custom_static_obst_mutex_);
+
+  if (!custom_obstacle_msg_.obstacles.empty()) {
+      // We only use the global header to specify the obstacle coordinate system instead of individual ones
+      Eigen::Affine3d obstacle_to_map_eig;
+      try {
+          geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
                   global_frame_, tf2::timeFromSec(0),
                   custom_obstacle_msg_.header.frame_id, tf2::timeFromSec(0),
                   custom_obstacle_msg_.header.frame_id, tf2::durationFromSec(0.5));
-      obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
-      //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
-    }
-    catch (tf2::TransformException ex)
-    {
-      RCLCPP_ERROR(logger_, "%s",ex.what());
-      obstacle_to_map_eig.setIdentity();
-    }
-    
-    for (size_t i=0; i<custom_obstacle_msg_.obstacles.size(); ++i)
-    {
-      if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 && custom_obstacle_msg_.obstacles.at(i).radius > 0 ) // circle
-      {
-        Eigen::Vector3d pos( custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z );
-        obstacles_.push_back(ObstaclePtr(new CircularObstacle( (obstacle_to_map_eig * pos).head(2), custom_obstacle_msg_.obstacles.at(i).radius)));
+          obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
+          //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
       }
-      else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 ) // point
-      {
-        Eigen::Vector3d pos( custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
-                             custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z );
-        obstacles_.push_back(ObstaclePtr(new PointObstacle( (obstacle_to_map_eig * pos).head(2) )));
-      }
-      else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2 ) // line
-      {
-        Eigen::Vector3d line_start( custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
-                                    custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
-                                    custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z );
-        Eigen::Vector3d line_end( custom_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
-                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
-                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.back().z );
-        obstacles_.push_back(ObstaclePtr(new LineObstacle( (obstacle_to_map_eig * line_start).head(2),
-                                                           (obstacle_to_map_eig * line_end).head(2) )));
-      }
-      else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.empty())
-      {
-        RCLCPP_INFO(logger_, "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
-        continue;
-      }
-      else // polygon
-      {
-        PolygonObstacle* polyobst = new PolygonObstacle;
-        for (size_t j=0; j<custom_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j)
-        {
-          Eigen::Vector3d pos( custom_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
-                               custom_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
-                               custom_obstacle_msg_.obstacles.at(i).polygon.points[j].z );
-          polyobst->pushBackVertex( (obstacle_to_map_eig * pos).head(2) );
-        }
-        polyobst->finalizePolygon();
-        obstacles_.push_back(ObstaclePtr(polyobst));
+      catch (tf2::TransformException ex) {
+          RCLCPP_ERROR(nh_->logger_, "%s", ex.what());
+          obstacle_to_map_eig.setIdentity();
       }
 
-      // Set velocity, if obstacle is moving
-      if(!obstacles_.empty())
-        obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
-    }
+      for (size_t i = 0; i < custom_obstacle_msg_.obstacles.size(); ++i) {
+          if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 &&
+              custom_obstacle_msg_.obstacles.at(i).radius > 0) // circle
+          {
+              Eigen::Vector3d pos(custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new CircularObstacle((obstacle_to_map_eig * pos).head(2),
+                                                                    custom_obstacle_msg_.obstacles.at(i).radius)));
+          } else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1) // point
+          {
+              Eigen::Vector3d pos(custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new PointObstacle((obstacle_to_map_eig * pos).head(2))));
+          } else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2) // line
+          {
+              Eigen::Vector3d line_start(custom_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                         custom_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                         custom_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              Eigen::Vector3d line_end(custom_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
+                                       custom_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
+                                       custom_obstacle_msg_.obstacles.at(i).polygon.points.back().z);
+              obstacles_.push_back(ObstaclePtr(new LineObstacle((obstacle_to_map_eig * line_start).head(2),
+                                                                (obstacle_to_map_eig * line_end).head(2))));
+          } else if (custom_obstacle_msg_.obstacles.at(i).polygon.points.empty()) {
+              RCLCPP_INFO(nh_->get_logger(),
+                          "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+              continue;
+          } else // polygon
+          {
+              PolygonObstacle *polyobst = new PolygonObstacle;
+              for (size_t j = 0; j < custom_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j) {
+                  Eigen::Vector3d pos(custom_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
+                                      custom_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
+                                      custom_obstacle_msg_.obstacles.at(i).polygon.points[j].z);
+                  polyobst->pushBackVertex((obstacle_to_map_eig * pos).head(2));
+              }
+              polyobst->finalizePolygon();
+              obstacles_.push_back(ObstaclePtr(polyobst));
+          }
+          if(!obstacles_.empty())
+              obstacles_.back()->setCentroidVelocity(custom_obstacle_msg_.obstacles[i].velocities, custom_obstacle_msg_.obstacles[i].orientation);
+
+      }
+  }
+  // ADD Narrow isle obstacles
+  if (!custom_narrow_obstacle_msg_.obstacles.empty())
+  {
+      // We only use the global header to specify the obstacle coordinate system instead of individual ones
+      Eigen::Affine3d obstacle_to_map_eig;
+      try
+      {
+          geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
+                  global_frame_, tf2::timeFromSec(0),
+                  custom_narrow_obstacle_msg_.header.frame_id, tf2::timeFromSec(0),
+                  custom_narrow_obstacle_msg_.header.frame_id, tf2::durationFromSec(0.5));
+          obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
+          //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
+      }
+      catch (tf2::TransformException ex)
+      {
+          RCLCPP_ERROR(nh_->logger_, "%s",ex.what());
+          obstacle_to_map_eig.setIdentity();
+      }
+      for (size_t i=0; i<custom_narrow_obstacle_msg_.obstacles.size(); ++i) {
+          if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 &&
+              custom_narrow_obstacle_msg_.obstacles.at(i).radius > 0) // circle
+          {
+              Eigen::Vector3d pos(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new CircularObstacle((obstacle_to_map_eig * pos).head(2),
+                                                                    custom_narrow_obstacle_msg_.obstacles.at(
+                                                                            i).radius)));
+          } else if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1) // point
+          {
+              Eigen::Vector3d pos(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new PointObstacle((obstacle_to_map_eig * pos).head(2))));
+          } else if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2) // line
+          {
+              Eigen::Vector3d line_start(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                         custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                         custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              Eigen::Vector3d line_end(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
+                                       custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
+                                       custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.back().z);
+              obstacles_.push_back(ObstaclePtr(new LineObstacle((obstacle_to_map_eig * line_start).head(2),
+                                                                (obstacle_to_map_eig * line_end).head(2))));
+          } else if (custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.empty()) {
+              RCLCPP_INFO(nh_->get_logger(),
+                          "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+              continue;
+          } else // polygon
+          {
+              PolygonObstacle *polyobst = new PolygonObstacle;
+              for (size_t j = 0; j < custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j) {
+                  Eigen::Vector3d pos(custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
+                                      custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
+                                      custom_narrow_obstacle_msg_.obstacles.at(i).polygon.points[j].z);
+                  polyobst->pushBackVertex((obstacle_to_map_eig * pos).head(2));
+              }
+              polyobst->finalizePolygon();
+              obstacles_.push_back(ObstaclePtr(polyobst));
+          }
+          if(!obstacles_.empty())
+              obstacles_.back()->setCentroidVelocity(custom_narrow_obstacle_msg_.obstacles[i].velocities, custom_narrow_obstacle_msg_.obstacles[i].orientation);
+       }
+  }
+  // ADD static isle obstacles
+  if (!custom_static_obstacle_msg_.obstacles.empty())
+  {
+      // We only use the global header to specify the obstacle coordinate system instead of individual ones
+      Eigen::Affine3d obstacle_to_map_eig;
+      try
+      {
+          geometry_msgs::msg::TransformStamped obstacle_to_map = tf_->lookupTransform(
+                  global_frame_, tf2::timeFromSec(0),
+                  custom_static_obstacle_msg_.header.frame_id, tf2::timeFromSec(0),
+                  custom_static_obstacle_msg_.header.frame_id, tf2::durationFromSec(0.5));
+          obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
+          //tf2::fromMsg(obstacle_to_map.transform, obstacle_to_map_eig);
+      }
+      catch (tf2::TransformException ex)
+      {
+          RCLCPP_ERROR(nh_->logger_, "%s",ex.what());
+          obstacle_to_map_eig.setIdentity();
+      }
+      for (size_t i=0; i<custom_static_obstacle_msg_.obstacles.size(); ++i) {
+          if (custom_static_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1 &&
+              custom_static_obstacle_msg_.obstacles.at(i).radius > 0) // circle
+          {
+              Eigen::Vector3d pos(custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new CircularObstacle((obstacle_to_map_eig * pos).head(2),
+                                                                    custom_static_obstacle_msg_.obstacles.at(
+                                                                            i).radius)));
+          } else if (custom_static_obstacle_msg_.obstacles.at(i).polygon.points.size() == 1) // point
+          {
+              Eigen::Vector3d pos(custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                  custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                  custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              obstacles_.push_back(ObstaclePtr(new PointObstacle((obstacle_to_map_eig * pos).head(2))));
+          } else if (custom_static_obstacle_msg_.obstacles.at(i).polygon.points.size() == 2) // line
+          {
+              Eigen::Vector3d line_start(custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().x,
+                                         custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().y,
+                                         custom_static_obstacle_msg_.obstacles.at(i).polygon.points.front().z);
+              Eigen::Vector3d line_end(custom_static_obstacle_msg_.obstacles.at(i).polygon.points.back().x,
+                                       custom_static_obstacle_msg_.obstacles.at(i).polygon.points.back().y,
+                                       custom_static_obstacle_msg_.obstacles.at(i).polygon.points.back().z);
+              obstacles_.push_back(ObstaclePtr(new LineObstacle((obstacle_to_map_eig * line_start).head(2),
+                                                                (obstacle_to_map_eig * line_end).head(2))));
+          } else if (custom_static_obstacle_msg_.obstacles.at(i).polygon.points.empty()) {
+              RCLCPP_INFO(nh_->get_logger(),
+                          "Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+              continue;
+          } else // polygon
+          {
+              PolygonObstacle *polyobst = new PolygonObstacle;
+              for (size_t j = 0; j < custom_static_obstacle_msg_.obstacles.at(i).polygon.points.size(); ++j) {
+                  Eigen::Vector3d pos(custom_static_obstacle_msg_.obstacles.at(i).polygon.points[j].x,
+                                      custom_static_obstacle_msg_.obstacles.at(i).polygon.points[j].y,
+                                      custom_static_obstacle_msg_.obstacles.at(i).polygon.points[j].z);
+                  polyobst->pushBackVertex((obstacle_to_map_eig * pos).head(2));
+              }
+              polyobst->finalizePolygon();
+              obstacles_.push_back(ObstaclePtr(polyobst));
+          }
+          if(!obstacles_.empty())
+              obstacles_.back()->setCentroidVelocity(custom_static_obstacle_msg_.obstacles[i].velocities, custom_static_obstacle_msg_.obstacles[i].orientation);
+       }
   }
 }
+
+
 
 void TebLocalPlannerROS::updateViaPointsContainer(const std::vector<geometry_msgs::msg::PoseStamped>& transformed_plan, double min_separation)
 {
@@ -1085,6 +1279,18 @@ void TebLocalPlannerROS::customObstacleCB(const costmap_converter_msgs::msg::Obs
 {
   std::lock_guard<std::mutex> l(custom_obst_mutex_);
   custom_obstacle_msg_ = *obst_msg;  
+}
+
+void TebLocalPlannerROS::customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
+{
+    std::lock_guard<std::mutex> l2(custom_narrow_obst_mutex_);
+    custom_narrow_obstacle_msg_ = *obst_msg;
+}
+
+void TebLocalPlannerROS::customStaticObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg)
+{
+    std::lock_guard<std::mutex> l3(custom_static_obst_mutex_);
+    custom_static_obstacle_msg_ = *obst_msg;
 }
 
 void TebLocalPlannerROS::customViaPointsCB(const nav_msgs::msg::Path::ConstSharedPtr via_points_msg)

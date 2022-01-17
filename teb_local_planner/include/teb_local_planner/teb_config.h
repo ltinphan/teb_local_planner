@@ -61,6 +61,9 @@ public:
   using UniquePtr = std::unique_ptr<TebConfig>;
   
   std::string odom_topic; //!< Topic name of the odometry message, provided by the robot driver or simulator
+  std::string custom_obst_topic; //!< Topic name of the custom obstacle message, provided by the robot driver or simulator
+  std::string custom_narrow_obst_topic; //!< Topic name of the custom narrow obstacles message,  obstacles are provided by the AdjustPalletGoal Action Server
+  std::string custom_static_obst_topic; //!< Topic name of the custom fill grade obstacles message, obstacles are provided by the camera server
   std::string map_frame; //!< Global planning frame
   std::string node_name; //!< node name used for parameter event callback
 
@@ -81,8 +84,10 @@ public:
     bool exact_arc_length; //!< If true, the planner uses the exact arc length in velocity, acceleration and turning rate computations [-> increased cpu time], otherwise the euclidean approximation is used.
     double force_reinit_new_goal_dist; //!< Reinitialize the trajectory if a previous goal is updated with a seperation of more than the specified value in meters (skip hot-starting)
     double force_reinit_new_goal_angular; //!< Reinitialize the trajectory if a previous goal is updated with an angular difference of more than the specified value in radians (skip hot-starting)
-    int feasibility_check_no_poses; //!< Specify up to which pose (under the feasibility_check_lookahead_distance) on the predicted plan the feasibility should be checked each sampling interval; if -1, all poses up to feasibility_check_lookahead_distance are checked.
+    int feasibility_check_no_poses; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
+    int feasibility_check_stop_poses; // How many poses to use for linear slowdown / stop for feasibility check. TEB will slowdown until this pose, and stop for all indices lower than that.
     double feasibility_check_lookahead_distance; //!< Specify up to which distance (and with an index below feasibility_check_no_poses) from the robot the feasibility should be checked each sampling interval; if -1, all poses up to feasibility_check_no_poses are checked.
+    bool feasibility_check; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
     bool publish_feedback; //!< Publish planner feedback containing the full trajectory and a list of active obstacles (should be enabled only for evaluation or debugging purposes)
     double min_resolution_collision_check_angular; //! Min angular resolution used during the costmap collision check. If not respected, intermediate samples are added. [rad]
     int control_look_ahead_poses; //! Index of the pose used to extract the velocity command
@@ -113,8 +118,10 @@ public:
   //! Goal tolerance related parameters
   struct GoalTolerance
   {
+    double yaw_goal_tolerance; //!< Allowed final orientation error
     double xy_goal_tolerance; //!< Allowed final euclidean distance to the goal position
     bool free_goal_vel; //!< Allow the robot's velocity to be nonzero (usally max_vel) for planning purposes
+    bool complete_global_plan; // true prevents the robot from ending the path early when it cross the end goal
   } goal_tolerance; //!< Goal tolerance related parameters
 
   //! Obstacle related parameters
@@ -240,6 +247,9 @@ public:
   {
 
     odom_topic = "odom";
+    custom_obst_topic = "obstacles";
+    custom_narrow_obst_topic = "narrow_obstacles";
+    custom_static_obst_topic = "static_obstacles";
     map_frame = "odom";
 
     // Trajectory
@@ -259,6 +269,8 @@ public:
     trajectory.force_reinit_new_goal_dist = 1;
     trajectory.force_reinit_new_goal_angular = 0.5 * M_PI;
     trajectory.feasibility_check_no_poses = 5;
+    trajectory.feasibility_check_stop_poses = 2;
+    trajectory.feasibility_check = false;
     trajectory.feasibility_check_lookahead_distance = -1;
     trajectory.publish_feedback = false;
     trajectory.min_resolution_collision_check_angular = M_PI;
@@ -286,7 +298,9 @@ public:
     // GoalTolerance
 
     goal_tolerance.xy_goal_tolerance = 0.2;
+    goal_tolerance.yaw_goal_tolerance = 0.2;
     goal_tolerance.free_goal_vel = false;
+    goal_tolerance.complete_global_plan = true;
 
     // Obstacles
 

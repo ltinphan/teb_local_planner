@@ -268,7 +268,7 @@ void CB_customObstacle(const costmap_converter::ObstacleArrayMsg::ConstPtr& obst
     }
     else if (obst_msg->obstacles.at(i).polygon.points.empty())
     {
-      ROS_WARN("Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+      // ROS_WARN("Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
       continue;
     }
     else

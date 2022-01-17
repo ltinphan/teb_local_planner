@@ -47,6 +47,9 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   node_name = name;
 
   declare_parameter_if_not_declared(nh, name + "." + "odom_topic", rclcpp::ParameterValue(odom_topic));
+  declare_parameter_if_not_declared(nh, name + "." + "custom_obst_topic", rclcpp::ParameterValue(custom_obst_topic));
+  declare_parameter_if_not_declared(nh, name + "." + "custom_narrow_obst_topic", rclcpp::ParameterValue(custom_narrow_obst_topic));
+  declare_parameter_if_not_declared(nh, name + "." + "custom_static_obst_topic", rclcpp::ParameterValue(custom_static_obst_topic));
   declare_parameter_if_not_declared(nh, name + "." + "map_frame", rclcpp::ParameterValue(map_frame));
 
   // Trajectory
@@ -65,6 +68,8 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "force_reinit_new_goal_dist", rclcpp::ParameterValue(trajectory.force_reinit_new_goal_dist));
   declare_parameter_if_not_declared(nh, name + "." + "force_reinit_new_goal_angular", rclcpp::ParameterValue(trajectory.force_reinit_new_goal_angular));
   declare_parameter_if_not_declared(nh, name + "." + "feasibility_check_no_poses", rclcpp::ParameterValue(trajectory.feasibility_check_no_poses));
+  declare_parameter_if_not_declared(nh, name + "." + "feasibility_check_stop_poses", rclcpp::ParameterValue(trajectory.feasibility_check_stop_poses));
+  declare_parameter_if_not_declared(nh, name + "." + "feasibility_check", rclcpp::ParameterValue(trajectory.feasibility_check));
   declare_parameter_if_not_declared(nh, name + "." + "publish_feedback", rclcpp::ParameterValue(trajectory.publish_feedback));
   declare_parameter_if_not_declared(nh, name + "." + "min_resolution_collision_check_angular", rclcpp::ParameterValue(trajectory.min_resolution_collision_check_angular));
   declare_parameter_if_not_declared(nh, name + "." + "control_look_ahead_poses", rclcpp::ParameterValue(trajectory.control_look_ahead_poses));
@@ -84,7 +89,10 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "is_footprint_dynamic", rclcpp::ParameterValue(robot.is_footprint_dynamic));
 
   // GoalTolerance
+  declare_parameter_if_not_declared(nh, name + "." + "xy_goal_tolerance", rclcpp::ParameterValue(goal_tolerance.xy_goal_tolerance));
+  declare_parameter_if_not_declared(nh, name + "." + "yaw_goal_tolerance", rclcpp::ParameterValue(goal_tolerance.yaw_goal_tolerance));
   declare_parameter_if_not_declared(nh, name + "." + "free_goal_vel", rclcpp::ParameterValue(goal_tolerance.free_goal_vel));
+  declare_parameter_if_not_declared(nh, name + "." + "complete_global_plan", rclcpp::ParameterValue(goal_tolerance.complete_global_plan));
 
   // Obstacles
   declare_parameter_if_not_declared(nh, name + "." + "min_obstacle_dist", rclcpp::ParameterValue(obstacles.min_obstacle_dist));
@@ -167,11 +175,17 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   declare_parameter_if_not_declared(nh, name + "." + "oscillation_filter_duration", rclcpp::ParameterValue(recovery.oscillation_filter_duration));
   declare_parameter_if_not_declared(nh, name + "." + "divergence_detection_enable", rclcpp::ParameterValue(recovery.divergence_detection_enable));
   declare_parameter_if_not_declared(nh, name + "." + "divergence_detection_max_chi_squared", rclcpp::ParameterValue(recovery.divergence_detection_max_chi_squared));
+
+  declare_parameter_if_not_declared(nh, name + "." + "use_sin_cos_approximation", rclcpp::ParameterValue(performance.use_sin_cos_approximation));
+  declare_parameter_if_not_declared(nh, name + "." + "global_plan_publish_freq", rclcpp::ParameterValue(performance.global_plan_publish_freq));
 }
 
 void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::SharedPtr nh, const std::string name)
 {
   nh->get_parameter_or(name + "." + "odom_topic", odom_topic, odom_topic);
+  nh->get_parameter_or(name + "." + "custom_obst_topic", custom_obst_topic, custom_obst_topic);
+  nh->get_parameter_or(name + "." + "custom_narrow_obst_topic", custom_narrow_obst_topic, custom_narrow_obst_topic);
+  nh->get_parameter_or(name + "." + "custom_static_obst_topic", custom_static_obst_topic, custom_static_obst_topic);
   nh->get_parameter_or(name + "." + "map_frame", map_frame, map_frame);
   
   // Trajectory
@@ -190,6 +204,8 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   nh->get_parameter_or(name + "." + "force_reinit_new_goal_dist", trajectory.force_reinit_new_goal_dist, trajectory.force_reinit_new_goal_dist);
   nh->get_parameter_or(name + "." + "force_reinit_new_goal_angular", trajectory.force_reinit_new_goal_angular, trajectory.force_reinit_new_goal_angular);
   nh->get_parameter_or(name + "." + "feasibility_check_no_poses", trajectory.feasibility_check_no_poses, trajectory.feasibility_check_no_poses);
+  nh->get_parameter_or(name + "." + "feasibility_check_stop_poses", trajectory.feasibility_check_stop_poses, trajectory.feasibility_check_stop_poses);
+  nh->get_parameter_or(name + "." + "feasibility_check", trajectory.feasibility_check, trajectory.feasibility_check);
   nh->get_parameter_or(name + "." + "publish_feedback", trajectory.publish_feedback, trajectory.publish_feedback);
   nh->get_parameter_or(name + "." + "min_resolution_collision_check_angular", trajectory.min_resolution_collision_check_angular, trajectory.min_resolution_collision_check_angular);
   nh->get_parameter_or(name + "." + "control_look_ahead_poses", trajectory.control_look_ahead_poses, trajectory.control_look_ahead_poses);
@@ -209,7 +225,10 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   nh->get_parameter_or(name + "." + "is_footprint_dynamic", robot.is_footprint_dynamic, robot.is_footprint_dynamic);
   
   // GoalTolerance
+  nh->get_parameter_or(name + "." + "xy_goal_tolerance", goal_tolerance.xy_goal_tolerance, goal_tolerance.xy_goal_tolerance);
+  nh->get_parameter_or(name + "." + "yaw_goal_tolerance", goal_tolerance.yaw_goal_tolerance, goal_tolerance.yaw_goal_tolerance);
   nh->get_parameter_or(name + "." + "free_goal_vel", goal_tolerance.free_goal_vel, goal_tolerance.free_goal_vel);
+  nh->get_parameter_or(name + "." + "complete_global_plan", goal_tolerance.complete_global_plan, goal_tolerance.complete_global_plan);
 
   // Obstacles
   nh->get_parameter_or(name + "." + "min_obstacle_dist", obstacles.min_obstacle_dist, obstacles.min_obstacle_dist);
@@ -293,7 +312,11 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   nh->get_parameter_or(name + "." + "divergence_detection_enable", recovery.divergence_detection_enable, recovery.divergence_detection_enable);
   nh->get_parameter_or(name + "." + "divergence_detection_max_chi_squared", recovery.divergence_detection_max_chi_squared, recovery.divergence_detection_max_chi_squared);
 
-  checkParameters();
+  // Performance
+  nh->get_parameter_or(name + "." + "use_sin_cos_approximation", performance.use_sin_cos_approximation, performance.use_sin_cos_approximation);
+  nh->get_parameter_or(name + "." + "global_plan_publish_freq", performance.global_plan_publish_freq, performance.global_plan_publish_freq);
+
+  checkParameters(nh);
   checkDeprecated(nh, name);
 }
 
