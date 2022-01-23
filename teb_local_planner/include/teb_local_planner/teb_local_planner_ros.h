@@ -239,7 +239,16 @@ protected:
     * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
     */
   void customObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
-  
+
+
+    /**
+     * @brief Callback for custom narrow aisle obstacles that are not obtained from the costmap.
+     * Adjust Pallet Goal Action server provides this obstacles
+     * @param obst_msg pointer to the message containing a list of polygon shaped obstacles
+     */
+    void customNarrowObstacleCB(const costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obst_msg);
+
+
    /**
     * @brief Callback for custom via-points
     * @param via_points_msg pointer to the message containing a list of via-points
