@@ -380,6 +380,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
       std::string("teb_local_planner was not able to obtain a local plan for the current setting.")
     );
   }
+  double max_velocity_x = cfg_->robot.max_vel_x;
 
   // Check for divergence
   if (planner_->hasDiverged())
@@ -405,22 +406,25 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
     footprint_spec_ = costmap_ros_->getRobotFootprint();
     nav2_costmap_2d::calculateMinAndMaxDistances(footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius);
   }
+  int unfeasible_pose = -2;
+  if (cfg_->trajectory.feasibility_check){
+    unfeasible_pose = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses);
 
-  bool feasible = planner_->isTrajectoryFeasible(costmap_model_.get(), footprint_spec_, robot_inscribed_radius_, robot_circumscribed_radius, cfg_->trajectory.feasibility_check_no_poses, cfg_->trajectory.feasibility_check_lookahead_distance);
-  if (!feasible)
-  {
-    cmd_vel.twist.linear.x = cmd_vel.twist.linear.y = cmd_vel.twist.angular.z = 0;
-   
-    // now we reset everything to start again with the initialization of new trajectories.
-    planner_->clearPlanner();
+    if (unfeasible_pose > -1)
+    {
+      if (unfeasible_pose <= cfg_->trajectory.feasibility_check_stop_poses){
 
-    ++no_infeasible_plans_; // increase number of infeasible solutions in a row
-    time_last_infeasible_plan_ = clock_->now();
-    last_cmd_ = cmd_vel.twist;
-    
-    throw nav2_core::PlannerException(
-      std::string("TebLocalPlannerROS: trajectory is not feasible. Resetting planner...")
-    );
+        max_velocity_x = 0.0;
+        time_last_infeasible_plan_ = clock_->now();
+      }
+      else {
+        max_velocity_x = max_velocity_x * (double)(unfeasible_pose - cfg_->trajectory.feasibility_check_stop_poses) / (double)(cfg_->trajectory.feasibility_check_no_poses -  cfg_->trajectory.feasibility_check_stop_poses);
+      }
+    }
+  }
+  // we need to wait a bit, if a plan was infeasible
+  if((clock_->now() - time_last_infeasible_plan_).seconds()  < 4){
+    max_velocity_x = 0.0;
   }
 
   // Get the velocity command for this sampling interval
@@ -437,7 +441,7 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   }
   
   // Saturate velocity, if the optimization results violates the constraints (could be possible due to soft constraints).
-  saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_->robot.max_vel_x, cfg_->robot.max_vel_y,
+  saturateVelocity(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, max_velocity_x, cfg_->robot.max_vel_y,
                    cfg_->robot.max_vel_theta, cfg_->robot.max_vel_x_backwards);
 
   // convert rot-vel to steering angle if desired (carlike robot).
@@ -471,8 +475,11 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   planner_->visualize();
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
-  visualization_->publishGlobalPlan(global_plan_);
-  
+  // .seconds() return floating point seconds, so this function can be used for intervals under 1 second
+  if (time_last_published_global_plan_ + 1.0 < clock_->now().seconds()){
+    visualization_->publishGlobalPlan(global_plan_);
+    time_last_published_global_plan_ = clock_->now().seconds();
+  }
   return cmd_vel;
 }
 

@@ -84,6 +84,8 @@ public:
     double force_reinit_new_goal_dist; //!< Reinitialize the trajectory if a previous goal is updated with a seperation of more than the specified value in meters (skip hot-starting)
     double force_reinit_new_goal_angular; //!< Reinitialize the trajectory if a previous goal is updated with an angular difference of more than the specified value in radians (skip hot-starting)
     int feasibility_check_no_poses; //!< Specify up to which pose (under the feasibility_check_lookahead_distance) on the predicted plan the feasibility should be checked each sampling interval; if -1, all poses up to feasibility_check_lookahead_distance are checked.
+    int feasibility_check_stop_poses; // How many poses to use for linear slowdown / stop for feasibility check. TEB will slowdown until this pose, and stop for all indices lower than that.
+    bool feasibility_check; //!< Specify up to which pose on the predicted plan the feasibility should be checked each sampling interval.
     double feasibility_check_lookahead_distance; //!< Specify up to which distance (and with an index below feasibility_check_no_poses) from the robot the feasibility should be checked each sampling interval; if -1, all poses up to feasibility_check_no_poses are checked.
     bool publish_feedback; //!< Publish planner feedback containing the full trajectory and a list of active obstacles (should be enabled only for evaluation or debugging purposes)
     double min_resolution_collision_check_angular; //! Min angular resolution used during the costmap collision check. If not respected, intermediate samples are added. [rad]
@@ -264,6 +266,8 @@ public:
     trajectory.force_reinit_new_goal_angular = 0.5 * M_PI;
     trajectory.feasibility_check_no_poses = 5;
     trajectory.feasibility_check_lookahead_distance = -1;
+    trajectory.feasibility_check_stop_poses = 2;
+    trajectory.feasibility_check = false;
     trajectory.publish_feedback = false;
     trajectory.min_resolution_collision_check_angular = M_PI;
     trajectory.control_look_ahead_poses = 1;
