@@ -483,6 +483,8 @@ void TebConfig::on_parameter_event_callback(
         trajectory.max_samples = value.integer_value;
       } else if (name == node_name + ".feasibility_check_no_poses") {
         trajectory.feasibility_check_no_poses = value.integer_value;
+      }else if (name == node_name + ".feasibility_check_stop_poses") {
+        trajectory.feasibility_check_stop_poses = value.integer_value;
       } else if (name == node_name + ".control_look_ahead_poses") {
         trajectory.control_look_ahead_poses = value.integer_value;
       }
@@ -521,6 +523,8 @@ void TebConfig::on_parameter_event_callback(
         trajectory.exact_arc_length = value.bool_value;
       } else if (name == node_name + ".publish_feedback") {
         trajectory.publish_feedback = value.bool_value;
+      }else if (name == node_name + ".feasibility_check") {
+        trajectory.feasibility_check = value.bool_value;
       }
       // Robot
       else if (name == node_name + ".cmd_angle_instead_rotvel") {
