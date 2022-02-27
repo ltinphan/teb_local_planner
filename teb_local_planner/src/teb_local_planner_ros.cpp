@@ -475,11 +475,8 @@ geometry_msgs::msg::TwistStamped TebLocalPlannerROS::computeVelocityCommands(con
   planner_->visualize();
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
-  // .seconds() return floating point seconds, so this function can be used for intervals under 1 second
-  if (time_last_published_global_plan_ + 1.0 < clock_->now().seconds()){
-    visualization_->publishGlobalPlan(global_plan_);
-    time_last_published_global_plan_ = clock_->now().seconds();
-  }
+  visualization_->publishGlobalPlan(global_plan_);
+
   return cmd_vel;
 }
 
