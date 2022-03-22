@@ -65,11 +65,18 @@ TebVisualization::TebVisualization(const rclcpp_lifecycle::LifecycleNode::Shared
 {
 }
 
+double time_last_published_global_plan_;
+
 void TebVisualization::publishGlobalPlan(const std::vector<geometry_msgs::msg::PoseStamped>& global_plan) const
 {
   if ( printErrorWhenNotInitialized() )
     return;
   publishPlan(global_plan, global_plan_pub_.get());
+
+  if (time_last_published_global_plan_ + 2.0 < nh_->get_clock()->now().seconds()){
+    publishPlan(global_plan, global_plan_slow_pub_.get());
+    time_last_published_global_plan_ = nh_->get_clock()->now().seconds();
+  }
 }
 
 void TebVisualization::publishLocalPlan(const std::vector<geometry_msgs::msg::PoseStamped>& local_plan) const
@@ -517,6 +524,7 @@ nav2_util::CallbackReturn TebVisualization::on_configure()
 {
   // register topics
   global_plan_pub_ = nh_->create_publisher<nav_msgs::msg::Path>("global_plan", 1);;
+  global_plan_slow_pub_ = nh_->create_publisher<nav_msgs::msg::Path>("global_plan_slow", 1);
   local_plan_pub_ = nh_->create_publisher<nav_msgs::msg::Path>("local_plan",1);
   teb_poses_pub_ = nh_->create_publisher<geometry_msgs::msg::PoseArray>("teb_poses", 1);
   teb_marker_pub_ = nh_->create_publisher<visualization_msgs::msg::Marker>("teb_markers", 1);
@@ -530,6 +538,7 @@ nav2_util::CallbackReturn
 TebVisualization::on_activate()
 {
   global_plan_pub_->on_activate();
+  global_plan_slow_pub_->on_activate();
   local_plan_pub_->on_activate();
   teb_poses_pub_->on_activate();
   teb_marker_pub_->on_activate();
@@ -541,6 +550,7 @@ nav2_util::CallbackReturn
 TebVisualization::on_deactivate()
 {
   global_plan_pub_->on_deactivate();
+  global_plan_slow_pub_->on_deactivate();
   local_plan_pub_->on_deactivate();
   teb_poses_pub_->on_deactivate();
   teb_marker_pub_->on_deactivate();
@@ -552,6 +562,7 @@ nav2_util::CallbackReturn
 TebVisualization::on_cleanup()
 {
   global_plan_pub_.reset();
+  global_plan_slow_pub_.reset();
   local_plan_pub_.reset();
   teb_poses_pub_.reset();
   teb_marker_pub_.reset();
